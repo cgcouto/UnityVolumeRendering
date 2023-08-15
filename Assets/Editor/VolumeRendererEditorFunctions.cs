@@ -331,6 +331,26 @@ namespace UnityVolumeRendering
             }
         }
 
+        [MenuItem("Volume Rendering/Load dataset/Load HDF5 dataset")]
+        private static void ShowHDF5Importer()
+        {
+            string file = EditorUtility.OpenFilePanel("Select a dataset to load", "DataFiles", "");
+            if (File.Exists(file))
+            {
+                HDF5DatasetImporterEditorWindow wnd = (HDF5DatasetImporterEditorWindow)EditorWindow.GetWindow(typeof(HDF5DatasetImporterEditorWindow));
+                if (wnd != null)
+                    wnd.Close();
+
+                wnd = EditorWindow.CreateInstance<HDF5DatasetImporterEditorWindow>();
+                wnd.Initialise(file);
+                wnd.Show();
+            }
+            else
+            {
+                Debug.LogError("File doesn't exist: " + file);
+            }
+        }
+
         private static async Task OptionallyDownscale(VolumeDataset dataset)
         {
             if (EditorPrefs.GetBool("DownscaleDatasetPrompt"))
