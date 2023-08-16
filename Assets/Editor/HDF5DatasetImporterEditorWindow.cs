@@ -27,8 +27,6 @@ namespace UnityVolumeRendering
         {
             fileToImport = filePath;
 
-            Debug.Log(filePath);
-
             if (Path.GetExtension(fileToImport) == ".ini")
                 fileToImport = fileToImport.Substring(0, fileToImport.Length - 4);
 
@@ -53,32 +51,30 @@ namespace UnityVolumeRendering
             {
                 progressHandler.ReportProgress(0.0f, "Importing HDF5 dataset");
 
-                Debug.Log("Implementing this now!");
+                HDF5DatasetImporter importer = new HDF5DatasetImporter(fileToImport, dataset, dimX, dimY, dimZ, dataFormat);
+                VolumeDataset volumeDataset = await importer.ImportAsync();
 
-                // HDF5DatasetImporter importer = new HDF5DatasetImporter(fileToImport, dataset, dimX, dimY, dimZ, dataFormat);
-                // VolumeDataset volumeDataset = await importer.ImportAsync();
+                if (dataset != null)
+                {
+                    if (EditorPrefs.GetBool("DownscaleDatasetPrompt"))
+                    {
+                        if (EditorUtility.DisplayDialog("Optional DownScaling",
+                            $"Do you want to downscale the dataset? The dataset's dimension is: {volumeDataset.dimX} x {volumeDataset.dimY} x {volumeDataset.dimZ}", "Yes", "No"))
+                        {
+                            Debug.Log("Async dataset downscale. Hold on.");
+                            progressHandler.ReportProgress(0.7f, "Downscaling dataset");
+                            await Task.Run(() =>  volumeDataset.DownScaleData());
+                        }
+                    }
+                    progressHandler.ReportProgress(0.8f, "Creating object");
+                    VolumeRenderedObject obj = await VolumeObjectFactory.CreateObjectAsync(volumeDataset);
+                }
+                else
+                {
+                    Debug.LogError("Failed to import datset");
+                }
 
-                // if (dataset != null)
-                // {
-                //     if (EditorPrefs.GetBool("DownscaleDatasetPrompt"))
-                //     {
-                //         if (EditorUtility.DisplayDialog("Optional DownScaling",
-                //             $"Do you want to downscale the dataset? The dataset's dimension is: {volumeDataset.dimX} x {volumeDataset.dimY} x {volumeDataset.dimZ}", "Yes", "No"))
-                //         {
-                //             Debug.Log("Async dataset downscale. Hold on.");
-                //             progressHandler.ReportProgress(0.7f, "Downscaling dataset");
-                //             await Task.Run(() =>  volumeDataset.DownScaleData());
-                //         }
-                //     }
-                //     progressHandler.ReportProgress(0.8f, "Creating object");
-                //     VolumeRenderedObject obj = await VolumeObjectFactory.CreateObjectAsync(volumeDataset);
-                // }
-                // else
-                // {
-                //     Debug.LogError("Failed to import datset");
-                // }
-
-                // this.Close();
+                this.Close();
             }
         }
 
