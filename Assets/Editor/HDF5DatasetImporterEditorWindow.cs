@@ -30,17 +30,16 @@ namespace UnityVolumeRendering
             if (Path.GetExtension(fileToImport) == ".ini")
                 fileToImport = fileToImport.Substring(0, fileToImport.Length - 4);
 
-            // // Try parse ini file (if available)
-            // DatasetIniData initData = DatasetIniReader.ParseIniFile(fileToImport + ".ini");
-            // if (initData != null)
-            // {
-            //     dimX = initData.dimX;
-            //     dimY = initData.dimY;
-            //     dimZ = initData.dimZ;
-            //     bytesToSkip = initData.bytesToSkip;
-            //     dataFormat = initData.format;
-            //     endianness = initData.endianness;
-            // }
+            // Try parse ini file (if available)
+            DatasetIniData initData = DatasetIniReader.ParseIniFile(fileToImport + ".ini");
+            if (initData != null)
+            {
+                dimX = initData.dimX;
+                dimY = initData.dimY;
+                dimZ = initData.dimZ;
+                dataFormat = initData.format;
+                dataset = initData.dataset;
+            }
 
             this.minSize = new Vector2(300.0f, 200.0f);
         }

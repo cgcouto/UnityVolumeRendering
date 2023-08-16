@@ -11,6 +11,7 @@ namespace UnityVolumeRendering
         public int bytesToSkip = 0;
         public DataContentFormat format = DataContentFormat.Uint8;
         public Endianness endianness = Endianness.LittleEndian;
+        public string dataset = "densities";
     }
 
     /// <summary>
@@ -56,6 +57,8 @@ namespace UnityVolumeRendering
                     iniData.format = GetFormatByName(value);
                 else if (name == "endianness")
                     iniData.endianness = GetEndiannessByName(value);
+                else if (name == "dataset")
+                    iniData.dataset = value;
             }
 
             return iniData;
