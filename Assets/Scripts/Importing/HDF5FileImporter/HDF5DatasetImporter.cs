@@ -3,6 +3,7 @@ using UnityEngine;
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using System.Linq;
 
 // This is mostly based off of the RawDatasetImporter from the original project!
 // Just needed some HDFql code and some array flattening to get there
@@ -141,6 +142,47 @@ namespace UnityVolumeRendering
                             }
                         }
                         break;
+                    }
+                case DataContentFormat.Float32:
+                    {
+                        float[,,] temp = pullDataFromFile<float>();
+                        for (int i = 0; i < dimX; i++) {
+                            for (int j = 0; j < dimY; j++) {
+                                for (int k = 0; k < dimZ; k++) {
+                                    volumeDataset.data[i+j*dimX+k*dimX*dimY] = temp[i,j,k];
+                                }
+                            }
+                        }
+                        break;
+                    }
+                case DataContentFormat.Float64:
+                    {
+                        double[,,] temp = pullDataFromFile<double>();
+
+                        // Flatten to 1D array of doubles so Linq can find max and min
+                        double[] checkMagnitudes = new double[dimX*dimY*dimZ];
+                        for (int i = 0; i < dimX; i++) {
+                            for (int j = 0; j < dimY; j++) {
+                                for (int k = 0; k < dimZ; k++) {
+                                   checkMagnitudes[i+j*dimX+k*dimX*dimY] = temp[i,j,k];
+                                }
+                            }
+                        }
+                        // Only accepts doubles that can be casted down to floats, for now
+                        // TODO: Look over VolumeDataset code to see if there's any reason we can't bump up to doubles
+                        if (checkMagnitudes.Max() < 3.4028237*Math.Pow(10,38) && checkMagnitudes.Min() > 1.175494*Math.Pow(10,-38)) {
+                            for (int i = 0; i < dimX; i++) {
+                                for (int j = 0; j < dimY; j++) {
+                                    for (int k = 0; k < dimZ; k++) {
+                                        volumeDataset.data[i+j*dimX+k*dimX*dimY] = (float)temp[i,j,k];
+                                    }
+                                }
+                            }
+                            break;
+                        }
+                        else {
+                            throw new NotImplementedException("Given 64-bit floats can't be casted down to 32-bit floats");
+                        }
                     }
                 default:
                     throw new NotImplementedException("Unimplemented data content format");

@@ -12,8 +12,11 @@ namespace UnityVolumeRendering
         Uint8,
         Int16,
         Uint16,
+        Float16,
         Int32,
-        Uint32
+        Uint32,
+        Float32,
+        Float64
     }
 
     [Serializable]

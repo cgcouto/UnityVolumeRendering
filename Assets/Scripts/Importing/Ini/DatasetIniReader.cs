@@ -80,6 +80,10 @@ namespace UnityVolumeRendering
                     return DataContentFormat.Uint32;
                 case "uint8":
                     return DataContentFormat.Uint8;
+                case "float32":
+                    return DataContentFormat.Float32;
+                case "float64":
+                    return DataContentFormat.Float64;
                 default:
                     return DataContentFormat.Uint8;
             }
