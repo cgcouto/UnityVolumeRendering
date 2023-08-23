@@ -19,9 +19,28 @@ namespace UnityVolumeRendering
         private int dimY;
         private int dimZ;
 
+        private float rMin;
+        private float rMax;
+        private float thetaMin;
+        private float thetaMax;
+        private float phiMin;
+        private float phiMax;
+
+        private int gridX;
+        private int gridY;
+        private int gridZ;
+
+        private bool filterToggle;
+        private float filterLessThan;
+
         private DataContentFormat dataFormat = DataContentFormat.Uint32;
 
         private bool importing = false;
+
+        private CoordinateSystem coordinateSystem = CoordinateSystem.Cartesian;
+
+        private AngleUnits angleUnits = AngleUnits.Degrees;
+
 
         public void Initialise(string filePath)
         {
@@ -31,16 +50,26 @@ namespace UnityVolumeRendering
                 fileToImport = fileToImport.Substring(0, fileToImport.Length - 4);
 
             // Try parse ini file (if available)
-            DatasetIniData initData = DatasetIniReader.ParseIniFile(fileToImport + ".ini");
-            if (initData != null)
+            DatasetIniData iniData = DatasetIniReader.ParseIniFile(fileToImport + ".ini");
+            if (iniData != null)
             {
-                dimX = initData.dimX;
-                dimY = initData.dimY;
-                dimZ = initData.dimZ;
-                dataFormat = initData.format;
-                dataset = initData.dataset;
+                dimX = iniData.dimX;
+                dimY = iniData.dimY;
+                dimZ = iniData.dimZ;
+                dataFormat = iniData.format;
+                dataset = iniData.dataset;
+                rMin = iniData.rMin;
+                rMax = iniData.rMax;
+                thetaMin = iniData.thetaMin;
+                thetaMax = iniData.thetaMax;
+                phiMin = iniData.phiMin;
+                phiMax = iniData.phiMax;
+                gridX = iniData.gridX;
+                gridY = iniData.gridY;
+                gridZ = iniData.gridZ;
+                filterLessThan = iniData.filterLessThan;
             }
-
+            // this.position.width = 400.0f;
             this.minSize = new Vector2(300.0f, 200.0f);
         }
 
@@ -50,7 +79,19 @@ namespace UnityVolumeRendering
             {
                 progressHandler.ReportProgress(0.0f, "Importing HDF5 dataset");
 
-                HDF5DatasetImporter importer = new HDF5DatasetImporter(fileToImport, dataset, dimX, dimY, dimZ, dataFormat);
+                HDF5DatasetImporter importer = new HDF5DatasetImporter();
+
+                int[] dataSize = {dimX, dimY, dimZ};
+
+                if (coordinateSystem == CoordinateSystem.Cartesian) {
+                    importer = new HDF5DatasetImporter(fileToImport, dataset, dataSize, dataFormat, coordinateSystem);
+                } else {
+                    int[] gridSize = {gridX, gridY, gridZ};
+                    importer = new HDF5DatasetImporter(fileToImport, dataset, dataSize, dataFormat,  
+                                                                            coordinateSystem, angleUnits, rMin, rMax, thetaMin, thetaMax,
+                                                                            phiMin, phiMax, gridSize, filterToggle, filterLessThan);
+                }
+
                 VolumeDataset volumeDataset = await importer.ImportAsync();
 
                 if (dataset != null)
@@ -100,11 +141,32 @@ namespace UnityVolumeRendering
             }
             else
             {
+                EditorGUIUtility.labelWidth = 0.5f*this.position.width;
                 dataset = EditorGUILayout.TextField("Dataset", dataset);
-                dimX = EditorGUILayout.IntField("X dimension", dimX);
-                dimY = EditorGUILayout.IntField("Y dimension", dimY);
-                dimZ = EditorGUILayout.IntField("Z dimension", dimZ);
+                dimX = EditorGUILayout.IntField("First dimension of current data (X or r)", dimX);
+                dimY = EditorGUILayout.IntField("Second dimension of current data (Y or θ)", dimY);
+                dimZ = EditorGUILayout.IntField("Third dimension of current data (Z or Φ)", dimZ);
                 dataFormat = (DataContentFormat)EditorGUILayout.EnumPopup("Data format", dataFormat);
+                coordinateSystem = (CoordinateSystem)EditorGUILayout.EnumPopup("Coordinate system", coordinateSystem);
+
+                if (coordinateSystem == CoordinateSystem.Spherical) {
+                    rMin = EditorGUILayout.FloatField("Minimum r value", rMin);
+                    rMax = EditorGUILayout.FloatField("Maximum r value", rMax);
+                    thetaMin = EditorGUILayout.FloatField("Minimum θ value", thetaMin);
+                    thetaMax = EditorGUILayout.FloatField("Maximum θ value", thetaMax);
+                    phiMin = EditorGUILayout.FloatField("Minimum Φ value", phiMin);
+                    phiMax = EditorGUILayout.FloatField("Maximum Φ value", phiMax);
+                    angleUnits = (AngleUnits)EditorGUILayout.EnumPopup("Angle units", angleUnits);
+                    gridX = EditorGUILayout.IntField("X dimension of Cartesian grid", gridX);
+                    gridY = EditorGUILayout.IntField("Y dimension of Cartesian grid", gridY);
+                    gridZ = EditorGUILayout.IntField("Z dimension of Cartesian grid", gridZ); 
+                    filterToggle = EditorGUILayout.Toggle("Filter out densities less than some value?", filterToggle);
+
+                    if (filterToggle) {
+                        filterLessThan = EditorGUILayout.FloatField("Filter value", filterLessThan);
+                    }
+                    
+                }
 
                 if (GUILayout.Button("Import"))
                 {

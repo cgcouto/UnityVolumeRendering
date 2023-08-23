@@ -58,7 +58,7 @@ namespace UnityVolumeRendering
         public static Texture2D GenerateHistogramTextureOnGPU(VolumeDataset dataset)
         {
             double actualBound = dataset.GetMaxDataValue() - dataset.GetMinDataValue() + 1;
-            int numValues = System.Convert.ToInt32(dataset.GetMaxDataValue() - dataset.GetMinDataValue() + 1); // removed +1
+            int numValues = Mathf.Min(System.Convert.ToInt32(dataset.GetMaxDataValue() - dataset.GetMinDataValue() + 1),2147483647); // removed +1
             int sampleCount = System.Math.Min(numValues, 256);
 
             ComputeShader computeHistogram = Resources.Load("ComputeHistogram") as ComputeShader;

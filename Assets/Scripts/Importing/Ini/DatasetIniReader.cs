@@ -11,7 +11,18 @@ namespace UnityVolumeRendering
         public int bytesToSkip = 0;
         public DataContentFormat format = DataContentFormat.Uint8;
         public Endianness endianness = Endianness.LittleEndian;
-        public string dataset = "densities";
+        public string dataset = "";
+        public float rMin = 0.0f;
+        public float rMax = 0.0f;
+        public float thetaMin = 0.0f;
+        public float thetaMax = 0.0f;
+        public float phiMin = 0.0f;
+        public float phiMax = 0.0f;
+        public int gridX = 0;
+        public int gridY = 0;
+        public int gridZ = 0;
+        public float filterLessThan = Single.MinValue;
+
     }
 
     /// <summary>
@@ -59,6 +70,27 @@ namespace UnityVolumeRendering
                     iniData.endianness = GetEndiannessByName(value);
                 else if (name == "dataset")
                     iniData.dataset = value;
+                else if (name == "rmin")
+                    float.TryParse(value, out iniData.rMin);
+                else if (name == "rmax")
+                    float.TryParse(value, out iniData.rMax);
+                else if (name == "thetamin")
+                    float.TryParse(value, out iniData.thetaMin);
+                else if (name == "thetamax")
+                    float.TryParse(value, out iniData.thetaMax);
+                else if (name == "phimin")
+                    float.TryParse(value, out iniData.phiMin);
+                else if (name == "phimax")
+                    float.TryParse(value, out iniData.phiMax);
+                else if (name == "gridx")
+                    Int32.TryParse(value, out iniData.gridX);
+                else if (name == "gridy")
+                    Int32.TryParse(value, out iniData.gridY);
+                else if (name == "gridz")
+                    Int32.TryParse(value, out iniData.gridZ);
+                else if (name == "filterlessthan")
+                    float.TryParse(value, out iniData.filterLessThan);
+                
             }
 
             return iniData;
