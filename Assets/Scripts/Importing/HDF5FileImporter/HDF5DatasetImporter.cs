@@ -334,7 +334,7 @@ namespace UnityVolumeRendering
             HDFql.Execute("USE FILE " + "\"" + filePath.Replace("/","\\") + "\"");
 
             // Set a variable register (so HDFql knows where temp is in memory) then put the data there
-            HDFql.Execute("SELECT FROM " + dataName + " INTO MEMORY " + HDFql.VariableRegister(temp));
+            HDFql.Execute("SELECT FROM " + dataName + " INTO MEMORY " + HDFql.VariableTransientRegister(temp));
 
             return temp;
         }
@@ -346,7 +346,7 @@ namespace UnityVolumeRendering
             HDFql.Execute("USE FILE " + "\"" + filePath.Replace("/","\\") + "\"");
 
             // Set a variable register (so HDFql knows where temp is in memory) then put the data there
-            HDFql.Execute("SELECT FROM " + dataName + " INTO MEMORY " + HDFql.VariableRegister(temp));
+            HDFql.Execute("SELECT FROM " + dataName + " INTO MEMORY " + HDFql.VariableTransientRegister(temp));
 
             return temp;
         }
