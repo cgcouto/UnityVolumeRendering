@@ -9,7 +9,8 @@ namespace UnityVolumeRendering
     [Serializable]
     public enum CoordinateSystem {
         Cartesian,
-        Spherical,
+        SphericalUniform,
+        SphericalNonUniform
     }
 
     [Serializable]
@@ -40,10 +41,7 @@ namespace UnityVolumeRendering
         string thetaData;
         string phiData;
 
-        public HDF5DatasetImporter() 
-        {
-
-        }
+        public HDF5DatasetImporter() {}
 
         public HDF5DatasetImporter(string filePath, string dataset, int[] dataSize, DataContentFormat contentFormat,
                                     CoordinateSystem coordinateSystem)
@@ -71,6 +69,24 @@ namespace UnityVolumeRendering
             this.thetaMax = thetaMax;
             this.phiMin = phiMin;
             this.phiMax = phiMax;
+            this.gridSize = gridSize;
+            this.filterData = filterData;
+            this.filterValue = filterValue;
+        }
+
+        public HDF5DatasetImporter(string filePath, string dataset, int[] dataSize, DataContentFormat contentFormat,
+                                   CoordinateSystem coordinateSystem, AngleUnits angleUnits, string rData, string thetaData,
+                                   string phiData, int[] gridSize, bool filterData, float filterValue)
+        {
+            this.filePath = filePath;
+            this.dataset = dataset;
+            this.dataSize = dataSize;
+            this.contentFormat = contentFormat;
+            this.coordinateSystem = coordinateSystem;
+            this.angleUnits = angleUnits;
+            this.rData = rData;
+            this.thetaData = thetaData;
+            this.phiData = phiData;
             this.gridSize = gridSize;
             this.filterData = filterData;
             this.filterValue = filterValue;
@@ -110,7 +126,7 @@ namespace UnityVolumeRendering
             volumeDataset.datasetName = Path.GetFileName(filePath);
             volumeDataset.filePath = filePath;
 
-            if (coordinateSystem == CoordinateSystem.Spherical) {
+            if (coordinateSystem == CoordinateSystem.SphericalUniform || coordinateSystem == CoordinateSystem.SphericalNonUniform) {
                 volumeDataset.dimX = gridSize[0];
                 volumeDataset.dimY = gridSize[1];
                 volumeDataset.dimZ = gridSize[2];
@@ -125,7 +141,7 @@ namespace UnityVolumeRendering
                 case DataContentFormat.Int8: 
                     {
                         // get the data out of the HDF5 file
-                        sbyte[,,] temp = pullDataFromFile<sbyte>();
+                        sbyte[,,] temp = pull3DDataFromFile<sbyte>(dataset, dataSize[0], dataSize[1], dataSize[2]);
 
                         // convert it to floats
                         float[,,] data = new float[dataSize[0], dataSize[1], dataSize[2]];
@@ -138,7 +154,7 @@ namespace UnityVolumeRendering
                             }
                         }
 
-                        if (coordinateSystem == CoordinateSystem.Spherical) {
+                        if (coordinateSystem == CoordinateSystem.SphericalUniform || coordinateSystem == CoordinateSystem.SphericalNonUniform) {
                             data = sphericalToCartesianGrid(data);
 
                         }
@@ -147,7 +163,7 @@ namespace UnityVolumeRendering
                     }
                 case DataContentFormat.Int16:
                     {
-                        short[,,] temp = pullDataFromFile<short>();
+                        short[,,] temp = pull3DDataFromFile<short>(dataset, dataSize[0], dataSize[1], dataSize[2]);
 
                         // convert it to floats
                         float[,,] data = new float[dataSize[0], dataSize[1], dataSize[2]];
@@ -160,7 +176,7 @@ namespace UnityVolumeRendering
                             }
                         }
 
-                        if (coordinateSystem == CoordinateSystem.Spherical) {
+                        if (coordinateSystem == CoordinateSystem.SphericalUniform || coordinateSystem == CoordinateSystem.SphericalNonUniform) {
                             data = sphericalToCartesianGrid(data);
 
                         }
@@ -169,7 +185,7 @@ namespace UnityVolumeRendering
                     }
                 case DataContentFormat.Int32:
                     {
-                        int[,,] temp = pullDataFromFile<int>();
+                        int[,,] temp = pull3DDataFromFile<int>(dataset, dataSize[0], dataSize[1], dataSize[2]);
 
                         // convert it to floats
                         float[,,] data = new float[dataSize[0], dataSize[1], dataSize[2]];
@@ -182,7 +198,7 @@ namespace UnityVolumeRendering
                             }
                         }
 
-                        if (coordinateSystem == CoordinateSystem.Spherical) {
+                        if (coordinateSystem == CoordinateSystem.SphericalUniform || coordinateSystem == CoordinateSystem.SphericalNonUniform) {
                             data = sphericalToCartesianGrid(data);
 
                         }
@@ -191,7 +207,7 @@ namespace UnityVolumeRendering
                     }
                 case DataContentFormat.Uint8:
                     {
-                        byte[,,] temp = pullDataFromFile<byte>();
+                        byte[,,] temp = pull3DDataFromFile<byte>(dataset, dataSize[0], dataSize[1], dataSize[2]);
 
                         // convert it to floats
                         float[,,] data = new float[dataSize[0], dataSize[1], dataSize[2]];
@@ -204,7 +220,7 @@ namespace UnityVolumeRendering
                             }
                         }
 
-                        if (coordinateSystem == CoordinateSystem.Spherical) {
+                        if (coordinateSystem == CoordinateSystem.SphericalUniform || coordinateSystem == CoordinateSystem.SphericalNonUniform) {
                             data = sphericalToCartesianGrid(data);
 
                         }
@@ -213,7 +229,7 @@ namespace UnityVolumeRendering
                     }
                 case DataContentFormat.Uint16:
                     {
-                        ushort[,,] temp = pullDataFromFile<ushort>();
+                        ushort[,,] temp = pull3DDataFromFile<ushort>(dataset, dataSize[0], dataSize[1], dataSize[2]);
 
                         // convert it to floats
                         float[,,] data = new float[dataSize[0], dataSize[1], dataSize[2]];
@@ -226,7 +242,7 @@ namespace UnityVolumeRendering
                             }
                         }
 
-                        if (coordinateSystem == CoordinateSystem.Spherical) {
+                        if (coordinateSystem == CoordinateSystem.SphericalUniform || coordinateSystem == CoordinateSystem.SphericalNonUniform) {
                             data = sphericalToCartesianGrid(data);
 
                         }
@@ -235,7 +251,7 @@ namespace UnityVolumeRendering
                     }
                 case DataContentFormat.Uint32:
                     {
-                        uint[,,] temp = pullDataFromFile<uint>();
+                        uint[,,] temp = pull3DDataFromFile<uint>(dataset, dataSize[0], dataSize[1], dataSize[2]);
 
                         // convert it to floats
                         float[,,] data = new float[dataSize[0], dataSize[1], dataSize[2]];
@@ -248,7 +264,7 @@ namespace UnityVolumeRendering
                             }
                         }
 
-                        if (coordinateSystem == CoordinateSystem.Spherical) {
+                        if (coordinateSystem == CoordinateSystem.SphericalUniform || coordinateSystem == CoordinateSystem.SphericalNonUniform) {
                             data = sphericalToCartesianGrid(data);
 
                         }
@@ -258,7 +274,7 @@ namespace UnityVolumeRendering
                 case DataContentFormat.Float32:
                     {
                         // get the data from the HDF5 file
-                        float[,,] temp = pullDataFromFile<float>();
+                        float[,,] temp = pull3DDataFromFile<float>(dataset, dataSize[0], dataSize[1], dataSize[2]);
 
                         // convert it to floats
                         float[,,] data = new float[dataSize[0], dataSize[1], dataSize[2]];
@@ -271,7 +287,7 @@ namespace UnityVolumeRendering
                             }
                         }
 
-                        if (coordinateSystem == CoordinateSystem.Spherical) {
+                        if (coordinateSystem == CoordinateSystem.SphericalUniform || coordinateSystem == CoordinateSystem.SphericalNonUniform) {
                             data = sphericalToCartesianGrid(data);
 
                         }
@@ -281,7 +297,7 @@ namespace UnityVolumeRendering
                 case DataContentFormat.Float64:
                     {
                         // get the data from the HDF5 file
-                        double[,,] temp = pullDataFromFile<double>();
+                        double[,,] temp = pull3DDataFromFile<double>(dataset, dataSize[0], dataSize[1], dataSize[2]);
 
                         // convert it to floats
                         float[,,] data = new float[dataSize[0], dataSize[1], dataSize[2]];
@@ -294,7 +310,7 @@ namespace UnityVolumeRendering
                             }
                         }
 
-                        if (coordinateSystem == CoordinateSystem.Spherical) {
+                        if (coordinateSystem == CoordinateSystem.SphericalUniform || coordinateSystem == CoordinateSystem.SphericalNonUniform) {
                             data = sphericalToCartesianGrid(data);
 
                         }
@@ -311,14 +327,26 @@ namespace UnityVolumeRendering
             volumeDataset.rotation = Quaternion.Euler(90.0f, 0.0f, 0.0f);
         }
 
-        private T[,,] pullDataFromFile<T>() {
-            T[,,] temp = new T[dataSize[0], dataSize[1], dataSize[2]];
+        private T[] pull1DDataFromFile<T>(string dataName, int dim) {
+            T[] temp = new T[dim];
 
             // Need to swap to double slashes and include quotes in the filepath so C#/HDFql can read it properly
             HDFql.Execute("USE FILE " + "\"" + filePath.Replace("/","\\") + "\"");
 
             // Set a variable register (so HDFql knows where temp is in memory) then put the data there
-            HDFql.Execute("SELECT FROM " + dataset + " INTO MEMORY " + HDFql.VariableRegister(temp));
+            HDFql.Execute("SELECT FROM " + dataName + " INTO MEMORY " + HDFql.VariableRegister(temp));
+
+            return temp;
+        }
+
+        private T[,,] pull3DDataFromFile<T>(string dataName, int firstDim, int secondDim, int thirdDim) {
+            T[,,] temp = new T[firstDim, secondDim, thirdDim];
+
+            // Need to swap to double slashes and include quotes in the filepath so C#/HDFql can read it properly
+            HDFql.Execute("USE FILE " + "\"" + filePath.Replace("/","\\") + "\"");
+
+            // Set a variable register (so HDFql knows where temp is in memory) then put the data there
+            HDFql.Execute("SELECT FROM " + dataName + " INTO MEMORY " + HDFql.VariableRegister(temp));
 
             return temp;
         }
@@ -362,26 +390,31 @@ namespace UnityVolumeRendering
             float[] thetaValues = new float[dataSize[1]];
             float[] phiValues = new float[dataSize[2]];
 
+            if (coordinateSystem == CoordinateSystem.SphericalNonUniform) {
+                rValues = pull1DDataFromFile<float>(rData, dataSize[0]);
+                thetaValues = pull1DDataFromFile<float>(thetaData, dataSize[1]);
+                phiValues = pull1DDataFromFile<float>(phiData, dataSize[2]);
+            } else {
+                for (int i = 0; i < dataSize[0]; i++) {
+                    rValues[i] = Mathf.Lerp(rMin, rMax, (float)i/(dataSize[0]-1));
+                }
 
-            for (int i = 0; i < dataSize[0]; i++) {
-                rValues[i] = Mathf.Lerp(rMin, rMax, (float)i/(dataSize[0]-1));
-            }
+                bool degrees = angleUnits == AngleUnits.Degrees;
 
-            bool degrees = angleUnits == AngleUnits.Degrees;
+                for (int i = 0; i < dataSize[1]; i++) {
+                    if (degrees) {
+                        thetaValues[i] = Mathf.Lerp(thetaMin*(Mathf.PI/180), thetaMax*(Mathf.PI/180), (float)i/(dataSize[1]-1));
+                    } else {
+                        thetaValues[i] = Mathf.Lerp(thetaMin, thetaMax, (float)i/(dataSize[1]-1));
+                    } 
+                }
 
-            for (int i = 0; i < dataSize[1]; i++) {
-                if (degrees) {
-                    thetaValues[i] = Mathf.Lerp(thetaMin*(Mathf.PI/180), thetaMax*(Mathf.PI/180), (float)i/(dataSize[1]-1));
-                } else {
-                    thetaValues[i] = Mathf.Lerp(thetaMin, thetaMax, (float)i/(dataSize[1]-1));
-                } 
-            }
-
-            for (int i = 0; i < dataSize[2]; i++) {
-                if (degrees) {  
-                    phiValues[i] = Mathf.Lerp(phiMin*(Mathf.PI/180), phiMax*(Mathf.PI/180), (float)i/(dataSize[2]-1));
-                } else {
-                    phiValues[i] = Mathf.Lerp(phiMin, phiMax, (float)i/(dataSize[2]-1));
+                for (int i = 0; i < dataSize[2]; i++) {
+                    if (degrees) {  
+                        phiValues[i] = Mathf.Lerp(phiMin*(Mathf.PI/180), phiMax*(Mathf.PI/180), (float)i/(dataSize[2]-1));
+                    } else {
+                        phiValues[i] = Mathf.Lerp(phiMin, phiMax, (float)i/(dataSize[2]-1));
+                    }
                 }
             }
 
@@ -476,6 +509,26 @@ namespace UnityVolumeRendering
             return densitiesCartesian;
         }
 
+        private float get1DMax(float[] data) {
+            float max = Single.MinValue;
+            for (int i = 0; i < data.GetLength(0); i++) {
+                if (data[i] > max) {
+                    max = data[i];
+                }
+            }
+            return max;
+        }
+
+        private float get1DMin(float[] data) {
+            float min = Single.MaxValue;
+            for (int i = 0; i < data.GetLength(0); i++) {
+                if (data[i] < min) {
+                    min = data[i];
+                }
+            }
+            return min;            
+        }
+
         private float get3DMax(float[,,] data) {
             float max = Single.MinValue;
             for (int i = 0; i < data.GetLength(0); i++) {
@@ -504,26 +557,6 @@ namespace UnityVolumeRendering
                 }
             }
             return min;
-        }
-
-        private float get1DMax(float[] data) {
-            float max = Single.MinValue;
-            for (int i = 0; i < data.GetLength(0); i++) {
-                if (data[i] > max) {
-                    max = data[i];
-                }
-            }
-            return max;
-        }
-
-        private float get1DMin(float[] data) {
-            float min = Single.MaxValue;
-            for (int i = 0; i < data.GetLength(0); i++) {
-                if (data[i] < min) {
-                    min = data[i];
-                }
-            }
-            return min;            
         }
     }
 }

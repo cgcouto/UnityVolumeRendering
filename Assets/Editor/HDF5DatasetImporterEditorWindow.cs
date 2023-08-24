@@ -33,6 +33,10 @@ namespace UnityVolumeRendering
         private bool filterToggle;
         private float filterLessThan;
 
+        private string rData;
+        private string thetaData;
+        private string phiData;
+
         private DataContentFormat dataFormat = DataContentFormat.Uint32;
 
         private bool importing = false;
@@ -82,14 +86,18 @@ namespace UnityVolumeRendering
                 HDF5DatasetImporter importer = new HDF5DatasetImporter();
 
                 int[] dataSize = {dimX, dimY, dimZ};
+                int[] gridSize = {gridX, gridY, gridZ};
 
-                if (coordinateSystem == CoordinateSystem.Cartesian) {
-                    importer = new HDF5DatasetImporter(fileToImport, dataset, dataSize, dataFormat, coordinateSystem);
+                if (coordinateSystem == CoordinateSystem.SphericalUniform) {
+                    importer = new HDF5DatasetImporter(fileToImport, dataset, dataSize, dataFormat, coordinateSystem, 
+                                                        angleUnits, rMin, rMax, thetaMin, thetaMax,
+                                                        phiMin, phiMax, gridSize, filterToggle, filterLessThan);
+                } else if (coordinateSystem == CoordinateSystem.SphericalNonUniform) {
+                    importer = new HDF5DatasetImporter(fileToImport, dataset, dataSize, dataFormat, coordinateSystem, 
+                                                        angleUnits, rData, thetaData, phiData,
+                                                        gridSize, filterToggle, filterLessThan);
                 } else {
-                    int[] gridSize = {gridX, gridY, gridZ};
-                    importer = new HDF5DatasetImporter(fileToImport, dataset, dataSize, dataFormat,  
-                                                                            coordinateSystem, angleUnits, rMin, rMax, thetaMin, thetaMax,
-                                                                            phiMin, phiMax, gridSize, filterToggle, filterLessThan);
+                    importer = new HDF5DatasetImporter(fileToImport, dataset, dataSize, dataFormat, coordinateSystem);
                 }
 
                 VolumeDataset volumeDataset = await importer.ImportAsync();
@@ -142,20 +150,29 @@ namespace UnityVolumeRendering
             else
             {
                 EditorGUIUtility.labelWidth = 0.5f*this.position.width;
-                dataset = EditorGUILayout.TextField("Dataset", dataset);
+                dataset = EditorGUILayout.TextField("Dataset for density data", dataset);
                 dimX = EditorGUILayout.IntField("First dimension of current data (X or r)", dimX);
                 dimY = EditorGUILayout.IntField("Second dimension of current data (Y or θ)", dimY);
                 dimZ = EditorGUILayout.IntField("Third dimension of current data (Z or Φ)", dimZ);
                 dataFormat = (DataContentFormat)EditorGUILayout.EnumPopup("Data format", dataFormat);
                 coordinateSystem = (CoordinateSystem)EditorGUILayout.EnumPopup("Coordinate system", coordinateSystem);
 
-                if (coordinateSystem == CoordinateSystem.Spherical) {
-                    rMin = EditorGUILayout.FloatField("Minimum r value", rMin);
-                    rMax = EditorGUILayout.FloatField("Maximum r value", rMax);
-                    thetaMin = EditorGUILayout.FloatField("Minimum θ value", thetaMin);
-                    thetaMax = EditorGUILayout.FloatField("Maximum θ value", thetaMax);
-                    phiMin = EditorGUILayout.FloatField("Minimum Φ value", phiMin);
-                    phiMax = EditorGUILayout.FloatField("Maximum Φ value", phiMax);
+                if (coordinateSystem == CoordinateSystem.SphericalUniform || coordinateSystem == CoordinateSystem.SphericalNonUniform) {
+                    if (coordinateSystem == CoordinateSystem.SphericalUniform) {
+                        EditorGUILayout.SelectableLabel("This option works when your r, θ, and Φ values are evenly spaced!");
+                        rMin = EditorGUILayout.FloatField("Minimum r value", rMin);
+                        rMax = EditorGUILayout.FloatField("Maximum r value", rMax);
+                        thetaMin = EditorGUILayout.FloatField("Minimum θ value", thetaMin);
+                        thetaMax = EditorGUILayout.FloatField("Maximum θ value", thetaMax);
+                        phiMin = EditorGUILayout.FloatField("Minimum Φ value", phiMin);
+                        phiMax = EditorGUILayout.FloatField("Maximum Φ value", phiMax);
+                    } else if (coordinateSystem == CoordinateSystem.SphericalNonUniform) {
+                        EditorGUILayout.SelectableLabel("This option is best when your data has non-uniform spacing in your spherical grid!");
+                        rData = EditorGUILayout.TextField("Dataset for r values", rData);
+                        thetaData = EditorGUILayout.TextField("Dataset for θ values", thetaData);
+                        phiData = EditorGUILayout.TextField("Dataset for Φ values", phiData);
+                    }
+
                     angleUnits = (AngleUnits)EditorGUILayout.EnumPopup("Angle units", angleUnits);
                     gridX = EditorGUILayout.IntField("X dimension of Cartesian grid", gridX);
                     gridY = EditorGUILayout.IntField("Y dimension of Cartesian grid", gridY);
@@ -164,8 +181,7 @@ namespace UnityVolumeRendering
 
                     if (filterToggle) {
                         filterLessThan = EditorGUILayout.FloatField("Filter value", filterLessThan);
-                    }
-                    
+                    }  
                 }
 
                 if (GUILayout.Button("Import"))
