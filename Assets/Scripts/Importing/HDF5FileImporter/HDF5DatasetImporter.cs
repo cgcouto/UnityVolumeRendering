@@ -32,28 +32,33 @@ namespace UnityVolumeRendering
 
     public class HDF5DatasetImporter
     {
+        // Used in all situations
         string filePath;
         string dataset;
         private int[] dataSize;
+        private int[] gridSize;
         private DataContentFormat contentFormat;
         private CoordinateSystem coordinateSystem;
         private SimulationType simType;
         private SphericalType sphericalType;
         private AngleUnits angleUnits;
+        private bool filterData;
+        private float filterValue;
+
+        // For spherical, uniform grid
         private float rMin;
         private float rMax;
         private float thetaMin;
         private float thetaMax;
         private float phiMin;
         private float phiMax;
-        private int[] gridSize;
-        private bool filterData;
-        private float filterValue;
 
+        // For spherical, non-uniform grid and spherical particle-based
         private string rData;
         private string thetaData;
         private string phiData;
 
+        // For cartesian particle-based
         private string xData;
         private string yData;
         private string zData;
@@ -118,9 +123,6 @@ namespace UnityVolumeRendering
             this.filterValue = filterValue;
         }
 
-                // if (coordinateSystem == CoordinateSystem.Spherical && simType == SimulationType.ParticleBased) {
-                //     importer = new HDF5DatasetImporter(fileToImport, dataset, dataSize, dataFormat, simType, coordinateSystem,
-                //                                         angleUnits, xData, yData, zData, gridSize, filterToggle, filterLessThan);
 
         public HDF5DatasetImporter(string filePath, string dataset, int[] dataSize, DataContentFormat contentFormat,
                                    SimulationType simType, CoordinateSystem coordinateSystem, AngleUnits angleUnits, 
@@ -140,9 +142,6 @@ namespace UnityVolumeRendering
             this.filterValue = filterValue;
         }
 
-                // } else if (coordinateSystem == CoordinateSystem.Cartesian && simType == SimulationType.ParticleBased) {
-                //     importer = new HDF5DatasetImporter(fileToImport, dataset, dataSize, dataFormat, simType, coordinateSystem,
-                //                                         rData, thetaData, phiData, filterToggle, filterLessThan);
         public HDF5DatasetImporter(string filePath, string dataset, int[] dataSize, DataContentFormat contentFormat,
                                    SimulationType simType, CoordinateSystem coordinateSystem, string rData, string thetaData, 
                                    string phiData, AngleUnits angleUnits, int[] gridSize, bool filterData, float filterValue)
@@ -161,7 +160,6 @@ namespace UnityVolumeRendering
             this.filterData = filterData;
             this.filterValue = filterValue;          
         }
-
 
         public VolumeDataset Import()
         {
@@ -197,6 +195,9 @@ namespace UnityVolumeRendering
             volumeDataset.datasetName = Path.GetFileName(filePath);
             volumeDataset.filePath = filePath;
 
+            // We can use the raw data size only when we don't have to bin the data,
+            // which is only in grid-based cartesian simulations
+            // Otherwise the final data takes the form of the desired grid
             if (simType == SimulationType.GridBased && coordinateSystem == CoordinateSystem.Cartesian) {
                 volumeDataset.dimX = dataSize[0];
                 volumeDataset.dimY = dataSize[1];
@@ -220,14 +221,15 @@ namespace UnityVolumeRendering
 
             float[] densities;
 
-
+            // For grid-based Cartesian simulations, only need to load, flatten, and filter (if desired)
             if (simType == SimulationType.GridBased && coordinateSystem == CoordinateSystem.Cartesian) {
 
                 float[,,] rawDensities = loadAndConvert3DData(dataset, dataSize[0], dataSize[1], dataSize[2]);
-                densities = flattenData(rawDensities, dataSize[0], dataSize[1], dataSize[2]);
+                densities = flatten3DData(rawDensities, dataSize[0], dataSize[1], dataSize[2]);
                 if (filterData) {
                     densities = filter1DData(densities, filterValue);
                 }
+            // For the other types we need to bin the data, so those have all been grouped together
             } else {
 
                 float[] r;
@@ -241,12 +243,12 @@ namespace UnityVolumeRendering
                 if (simType == SimulationType.GridBased) {
 
                     if (sphericalType == SphericalType.Uniform) {
-
-                        // generate r, theta, and phi arrays from given ranges
+                        // Generate r, theta, and phi arrays from given ranges
                         r = generateLerpArray(rMin, rMax, dataSize[0]);
                         theta = generateLerpArray(thetaMin, thetaMax, dataSize[1]);
                         phi = generateLerpArray(phiMin, phiMax, dataSize[2]);
                     } else {
+                        // Just load the data in because we can't compute it
                         r = loadAndConvert1DData(rData, dataSize[0]);
                         theta = loadAndConvert1DData(thetaData, dataSize[1]);
                         phi = loadAndConvert1DData(phiData, dataSize[2]);
@@ -259,6 +261,8 @@ namespace UnityVolumeRendering
 
                     float[,,] rawDensities = loadAndConvert3DData(dataset, dataSize[0], dataSize[1], dataSize[2]);
 
+                    // We flatten our key data arrays to unify with the 1D sources and because VolumeDataset
+                    // needs the density as a 1D array anyway
                     x = new float[dataSize[0]*dataSize[1]*dataSize[2]];
                     y = new float[dataSize[0]*dataSize[1]*dataSize[2]];
                     z = new float[dataSize[0]*dataSize[1]*dataSize[2]];
@@ -304,6 +308,76 @@ namespace UnityVolumeRendering
             return densities;
         }
 
+        // Filters the density data (if desired) before binning it to fit in a Cartesian grid
+        // Used on all supported data schemes except grid-based Cartesian!
+        private float[] filterAndBinDensities(float[] x, float[] y, float[] z, float[] densitiesFlattened) {
+
+            if (filterData) {
+                ulong count = 0;
+                for (int i = 0; i < densitiesFlattened.GetLength(0); i++) {
+                    if (densitiesFlattened[i] >= filterValue) {
+                        count++;
+                    }
+                }
+                float[] xFiltered = new float[count];
+                float[] yFiltered = new float[count];
+                float[] zFiltered = new float[count];
+                float[] densitiesFiltered = new float[count];
+
+                Debug.Log(count);
+                Debug.Log(densitiesFlattened.GetLength(0));
+
+                ulong index = 0;
+                for (int i = 0; i < densitiesFlattened.GetLength(0); i++) {
+                    if (densitiesFlattened[i] >= filterValue) {
+                        xFiltered[index] = x[i];
+                        yFiltered[index] = y[i];
+                        zFiltered[index] = z[i];
+                        densitiesFiltered[index] = densitiesFlattened[i];
+                        index++;
+                    }
+                }
+
+                x = xFiltered;
+                y = yFiltered;
+                z = zFiltered;
+                densitiesFlattened = densitiesFiltered;
+
+            }
+
+            float xMin = get1DMin(x);
+            float xMax = get1DMax(x);
+            float yMin = get1DMin(y);
+            float yMax = get1DMax(y);
+            float zMin = get1DMin(z);
+            float zMax = get1DMax(z);
+
+            // make each cell a little bit larger than it should be (with the 1.001f)
+            // this makes sure floating point error in computing xInd,yInd,zInd doesn't make us index out of the array when x ~ xMax
+            float cellX = ((xMax - xMin)/gridSize[0])*1.00001f;
+            float cellY = ((yMax - yMin)/gridSize[1])*1.00001f;
+            float cellZ = ((zMax - zMin)/gridSize[2])*1.00001f;
+
+            float[] densitiesBinned = new float[gridSize[0]*gridSize[1]*gridSize[2]];
+            int[] counts = new int[gridSize[0]*gridSize[1]*gridSize[2]];
+
+            for (int i = 0 ; i < densitiesFlattened.GetLength(0); i++) {
+                ushort xInd = (ushort)Mathf.Floor((x[i]-xMin)/cellX);
+                ushort yInd = (ushort)Mathf.Floor((y[i]-yMin)/cellY);
+                ushort zInd = (ushort)Mathf.Floor((z[i]-zMin)/cellZ);
+
+                int dataInd = xInd+yInd*gridSize[0]+zInd*gridSize[0]*gridSize[1];
+
+                densitiesBinned[dataInd] = (densitiesBinned[dataInd]*counts[dataInd] +
+                                                    densitiesFlattened[i])/(counts[dataInd]+1);
+                counts[dataInd]++;
+            }
+
+            return densitiesBinned;
+        }
+
+        // Returns a 1D vector of linearly interpolated values
+        // (a la linspace in numpy, MATLAB, etc)
         private float[] generateLerpArray(float minValue, float maxValue, int numSteps) {
             float[] lerpArr = new float[numSteps];
             for (int i = 0; i < numSteps; i++) {
@@ -312,30 +386,7 @@ namespace UnityVolumeRendering
             return lerpArr;
         }
 
-        private T[] pull1DDataFromFile<T>(string dataName, int dim) {
-            T[] temp = new T[dim];
-
-            // Need to swap to double slashes and include quotes in the filepath so C#/HDFql can read it properly
-            HDFql.Execute("USE FILE " + "\"" + filePath.Replace("/","\\") + "\"");
-
-            // Set a variable register (so HDFql knows where temp is in memory) then put the data there
-            HDFql.Execute("SELECT FROM " + dataName + " INTO MEMORY " + HDFql.VariableTransientRegister(temp));
-
-            return temp;
-        }
-
-        private T[,,] pull3DDataFromFile<T>(string dataName, int firstDim, int secondDim, int thirdDim) {
-            T[,,] temp = new T[firstDim, secondDim, thirdDim];
-
-            // Need to swap to double slashes and include quotes in the filepath so C#/HDFql can read it properly
-            HDFql.Execute("USE FILE " + "\"" + filePath.Replace("/","\\") + "\"");
-
-            // Set a variable register (so HDFql knows where temp is in memory) then put the data there
-            HDFql.Execute("SELECT FROM " + dataName + " INTO MEMORY " + HDFql.VariableTransientRegister(temp));
-
-            return temp;
-        }
-
+        // Handles the different supported data types, pulls 1D data from HDF5 and casts to floats
         private float[] loadAndConvert1DData(string dataName, int dim) {
             float [] data = new float[dim];
             switch (contentFormat) 
@@ -395,6 +446,7 @@ namespace UnityVolumeRendering
             return data;
         }
 
+        // Handles the different supported data types, pulls 3D data from HDF5 and casts to floats
         private float[,,] loadAndConvert3DData(string dataName, int firstDim, int secondDim, int thirdDim) {
             float [,,] data = new float[firstDim, secondDim, thirdDim];
             switch (contentFormat) 
@@ -454,18 +506,35 @@ namespace UnityVolumeRendering
             return data;
         }
 
-        private float[] flattenData(float[,,] data, int firstDim, int secondDim, int thirdDim) {
-            float[] flattened = new float[firstDim*secondDim*thirdDim];
-            for (int i = 0; i < firstDim; i++) {
-                for (int j = 0; j < secondDim; j++) {
-                    for (int k  = 0; k < thirdDim; k++) {
-                        flattened[i+j*firstDim+k*firstDim*secondDim] = data[i,j,k];
-                    }
-                }
-            }
-            return flattened;
+        // Uses HDFql to pull 1D data of a desired dimension from disk and into memory
+        private T[] pull1DDataFromFile<T>(string dataName, int dim) {
+            T[] temp = new T[dim];
+
+            // Need to swap to double slashes and include quotes in the filepath so C#/HDFql can read it properly
+            HDFql.Execute("USE FILE " + "\"" + filePath.Replace("/","\\") + "\"");
+
+            // Set a variable register (so HDFql knows where temp is in memory) then put the data there
+            HDFql.Execute("SELECT FROM " + dataName + " INTO MEMORY " + HDFql.VariableTransientRegister(temp));
+
+            return temp;
         }
 
+        // Uses HDFql to pull 3D data of desired dimensions from disk and into memory
+        private T[,,] pull3DDataFromFile<T>(string dataName, int firstDim, int secondDim, int thirdDim) {
+            T[,,] temp = new T[firstDim, secondDim, thirdDim];
+
+            // Need to swap to double slashes and include quotes in the filepath so C#/HDFql can read it properly
+            HDFql.Execute("USE FILE " + "\"" + filePath.Replace("/","\\") + "\"");
+
+            // Set a variable register (so HDFql knows where temp is in memory) then put the data there
+            HDFql.Execute("SELECT FROM " + dataName + " INTO MEMORY " + HDFql.VariableTransientRegister(temp));
+
+            return temp;
+        }
+
+        // Removes all values in a 1D array below a given value
+        // Used for processing the grid-based Cartesian results, not for the others
+        // because we flatten as part of the density binning process
         private float[] filter1DData(float[] data, float value) {
             ulong count = 0;
             for (int i = 0; i < data.GetLength(0); i++) {
@@ -485,74 +554,19 @@ namespace UnityVolumeRendering
             return dataFiltered;
         }
 
-        private float[] filterAndBinDensities(float[] x, float[] y, float[] z, float[] densitiesFlattened) {
-
-            if (filterData) {
-                ulong count = 0;
-                for (int i = 0; i < densitiesFlattened.GetLength(0); i++) {
-                    if (densitiesFlattened[i] >= filterValue) {
-                        count++;
+        // Flattens a given 3D array into a 1D array in a predictable manner
+        // Used for processing the grid-based Cartesian results, not for the others
+        // because we flatten as part of the density binning process
+        private float[] flatten3DData(float[,,] data, int firstDim, int secondDim, int thirdDim) {
+            float[] flattened = new float[firstDim*secondDim*thirdDim];
+            for (int i = 0; i < firstDim; i++) {
+                for (int j = 0; j < secondDim; j++) {
+                    for (int k  = 0; k < thirdDim; k++) {
+                        flattened[i+j*firstDim+k*firstDim*secondDim] = data[i,j,k];
                     }
                 }
-                float[] xFiltered = new float[count];
-                float[] yFiltered = new float[count];
-                float[] zFiltered = new float[count];
-                float[] densitiesFiltered = new float[count];
-
-                Debug.Log(count);
-                Debug.Log(densitiesFlattened.GetLength(0));
-
-                ulong index = 0;
-                for (int i = 0; i < densitiesFlattened.GetLength(0); i++) {
-                    if (densitiesFlattened[i] >= filterValue) {
-                        xFiltered[index] = x[i];
-                        yFiltered[index] = y[i];
-                        zFiltered[index] = z[i];
-                        densitiesFiltered[index] = densitiesFlattened[i];
-                        index++;
-                    }
-                }
-
-                x = xFiltered;
-                y = yFiltered;
-                z = zFiltered;
-                densitiesFlattened = densitiesFiltered;
-
             }
-
-            float xMin = get1DMin(x);
-            float xMax = get1DMax(x);
-            float yMin = get1DMin(y);
-            float yMax = get1DMax(y);
-            float zMin = get1DMin(z);
-            float zMax = get1DMax(z);
-
-            // make each cell a little bit larger than it should be (with the 1.001f)
-            // this makes sure floating point error in computing xInd,yInd,zInd doesn't make us index out of the array when x ~ xMax
-            float cellX = ((xMax - xMin)/gridSize[0])*1.00001f;
-            float cellY = ((yMax - yMin)/gridSize[1])*1.00001f;
-            float cellZ = ((zMax - zMin)/gridSize[2])*1.00001f;
-
-            Debug.Log(xMax-xMin);
-            Debug.Log(yMax-yMin);
-            Debug.Log(zMax-zMin);
-
-            float[] densitiesBinned = new float[gridSize[0]*gridSize[1]*gridSize[2]];
-            int[] counts = new int[gridSize[0]*gridSize[1]*gridSize[2]];
-
-            for (int i = 0 ; i < densitiesFlattened.GetLength(0); i++) {
-                ushort xInd = (ushort)Mathf.Floor((x[i]-xMin)/cellX);
-                ushort yInd = (ushort)Mathf.Floor((y[i]-yMin)/cellY);
-                ushort zInd = (ushort)Mathf.Floor((z[i]-zMin)/cellZ);
-
-                int dataInd = xInd+yInd*gridSize[0]+zInd*gridSize[0]*gridSize[1];
-
-                densitiesBinned[dataInd] = (densitiesBinned[dataInd]*counts[dataInd] +
-                                                    densitiesFlattened[i])/(counts[dataInd]+1);
-                counts[dataInd]++;
-            }
-
-            return densitiesBinned;
+            return flattened;
         }
 
         private float[] convertToRadians(float[] angles) {
