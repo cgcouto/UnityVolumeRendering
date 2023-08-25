@@ -291,12 +291,10 @@ namespace UnityVolumeRendering
                         y = new float[gridSize[0]*gridSize[1]*gridSize[2]];
                         z = new float[gridSize[0]*gridSize[1]*gridSize[2]];
 
-                        for (int i = 0; i < gridSize[0]; i++) {
-                            for (int j = 0; j < gridSize[1]; j++) {
-                                for (int k = 0; k < gridSize[2]; k++) {
-                                    x[i+j*gridSize[0]+k*gridSize[0]*gridSize[1]] = r[i]*Mathf.Sin(theta[j])*Mathf.Cos(phi[k]);
-                                    y[i+j*gridSize[0]+k*gridSize[0]*gridSize[1]] = r[i]*Mathf.Sin(theta[j])*Mathf.Sin(phi[k]);
-                                    z[i+j*gridSize[0]+k*gridSize[0]*gridSize[1]] = r[i]*Mathf.Cos(theta[j]);
+                        for (int i = 0; i < gridSize[0]*gridSize[1]*gridSize[2]; i++) {
+                                    x[i] = r[i]*Mathf.Sin(theta[i])*Mathf.Cos(phi[i]);
+                                    y[i] = r[i]*Mathf.Sin(theta[i])*Mathf.Sin(phi[i]);
+                                    z[i] = r[i]*Mathf.Cos(theta[i]);
                                 }
                             }
                         }
@@ -346,48 +344,48 @@ namespace UnityVolumeRendering
                 {
                     case DataContentFormat.Uint8:
                     {
-                        byte[] temp = pull1DDataFromFile<byte>(dataset, dim);
+                        byte[] temp = pull1DDataFromFile<byte>(dataName, dim);
                         data = byteToFloat1DArray(temp, dim);
                         break;
                     }
                     case DataContentFormat.Uint16:
                     {
-                        ushort[] temp = pull1DDataFromFile<ushort>(dataset, dim);
+                        ushort[] temp = pull1DDataFromFile<ushort>(dataName, dim);
                         data = ushortToFloat1DArray(temp, dim);
                         break;
                     }
                     case DataContentFormat.Uint32:
                     {
-                        uint[] temp = pull1DDataFromFile<uint>(dataset, dim);
+                        uint[] temp = pull1DDataFromFile<uint>(dataName, dim);
                         data = uintToFloat1DArray(temp, dim);  
                         break;
                     }
                     case DataContentFormat.Int8:
                     {
-                        sbyte[] temp = pull1DDataFromFile<sbyte>(dataset, dim);
+                        sbyte[] temp = pull1DDataFromFile<sbyte>(dataName, dim);
                         data = sbyteToFloat1DArray(temp, dim);
                         break;
                     }
                     case DataContentFormat.Int16:
                     {
-                        short[] temp = pull1DDataFromFile<short>(dataset, dim);
+                        short[] temp = pull1DDataFromFile<short>(dataName, dim);
                         data = shortToFloat1DArray(temp, dim);
                         break;
                     }
                     case DataContentFormat.Int32:
                     {
-                        int[] temp = pull1DDataFromFile<int>(dataset, dim);
+                        int[] temp = pull1DDataFromFile<int>(dataName, dim);
                         data = intToFloat1DArray(temp, dim);
                         break;
                     }
                     case DataContentFormat.Float32:
                     {
-                        data = pull1DDataFromFile<float>(dataset, dim);
+                        data = pull1DDataFromFile<float>(dataName, dim);
                         break;
                     }
                     case DataContentFormat.Float64:
                     {
-                        double[] temp = pull1DDataFromFile<double>(dataset, dim);
+                        double[] temp = pull1DDataFromFile<double>(dataName, dim);
                         data = doubleToFloat1DArray(temp, dim); 
                         break;                       
                     }
@@ -405,48 +403,48 @@ namespace UnityVolumeRendering
                 {
                     case DataContentFormat.Uint8:
                     {
-                        byte[,,] temp = pull3DDataFromFile<byte>(dataset, firstDim, secondDim, thirdDim);
+                        byte[,,] temp = pull3DDataFromFile<byte>(dataName, firstDim, secondDim, thirdDim);
                         data = byteToFloat3DArray(temp, firstDim, secondDim, thirdDim);
                         break;
                     }
                     case DataContentFormat.Uint16:
                     {
-                        ushort[,,] temp = pull3DDataFromFile<ushort>(dataset, firstDim, secondDim, thirdDim);
+                        ushort[,,] temp = pull3DDataFromFile<ushort>(dataName, firstDim, secondDim, thirdDim);
                         data = ushortToFloat3DArray(temp, firstDim, secondDim, thirdDim);
                         break;
                     }
                     case DataContentFormat.Uint32:
                     {
-                        uint[,,] temp = pull3DDataFromFile<uint>(dataset, firstDim, secondDim, thirdDim);
+                        uint[,,] temp = pull3DDataFromFile<uint>(dataName, firstDim, secondDim, thirdDim);
                         data = uintToFloat3DArray(temp, firstDim, secondDim, thirdDim);  
                         break;
                     }
                     case DataContentFormat.Int8:
                     {
-                        sbyte[,,] temp = pull3DDataFromFile<sbyte>(dataset, firstDim, secondDim, thirdDim);
+                        sbyte[,,] temp = pull3DDataFromFile<sbyte>(dataName, firstDim, secondDim, thirdDim);
                         data = sbyteToFloat3DArray(temp, firstDim, secondDim, thirdDim);
                         break;
                     }
                     case DataContentFormat.Int16:
                     {
-                        short[,,] temp = pull3DDataFromFile<short>(dataset, firstDim, secondDim, thirdDim);
+                        short[,,] temp = pull3DDataFromFile<short>(dataName, firstDim, secondDim, thirdDim);
                         data = shortToFloat3DArray(temp, firstDim, secondDim, thirdDim);
                         break;
                     }
                     case DataContentFormat.Int32:
                     {
-                        int[,,] temp = pull3DDataFromFile<int>(dataset, firstDim, secondDim, thirdDim);
+                        int[,,] temp = pull3DDataFromFile<int>(dataName, firstDim, secondDim, thirdDim);
                         data = intToFloat3DArray(temp, firstDim, secondDim, thirdDim);
                         break;
                     }
                     case DataContentFormat.Float32:
                     {
-                        data = pull3DDataFromFile<float>(dataset, firstDim, secondDim, thirdDim);
+                        data = pull3DDataFromFile<float>(dataName, firstDim, secondDim, thirdDim);
                         break;
                     }
                     case DataContentFormat.Float64:
                     {
-                        double[,,] temp = pull3DDataFromFile<double>(dataset, firstDim, secondDim, thirdDim);
+                        double[,,] temp = pull3DDataFromFile<double>(dataName, firstDim, secondDim, thirdDim);
                         data = doubleToFloat3DArray(temp, firstDim, secondDim, thirdDim);   
                         break;                     
                     }
@@ -493,7 +491,7 @@ namespace UnityVolumeRendering
 
             if (filterData) {
                 ulong count = 0;
-                for (int i = 0; i < dataSize[0]*dataSize[1]*dataSize[2]; i++) {
+                for (int i = 0; i < densitiesFlattened.GetLength(0); i++) {
                     if (densitiesFlattened[i] >= filterValue) {
                         count++;
                     }
@@ -504,10 +502,10 @@ namespace UnityVolumeRendering
                 float[] densitiesFiltered = new float[count];
 
                 Debug.Log(count);
-                Debug.Log(dataSize[0]*dataSize[1]*dataSize[2]);
+                Debug.Log(densitiesFlattened.GetLength(0));
 
                 ulong index = 0;
-                for (int i = 0; i < dataSize[0]*dataSize[1]*dataSize[2]; i++) {
+                for (int i = 0; i < densitiesFlattened.GetLength(0); i++) {
                     if (densitiesFlattened[i] >= filterValue) {
                         xFiltered[index] = x[i];
                         yFiltered[index] = y[i];

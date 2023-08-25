@@ -96,7 +96,7 @@ namespace UnityVolumeRendering
                 int[] dataSize = {dimX, dimY, dimZ};
                 int[] gridSize = {gridX, gridY, gridZ};
 
-                if (coordinateSystem == CoordinateSystem.Spherical && simType == SimulationType.ParticleBased) {
+                if (coordinateSystem == CoordinateSystem.Cartesian && simType == SimulationType.ParticleBased) {
                     importer = new HDF5DatasetImporter(fileToImport, dataset, dataSize, dataFormat, simType, coordinateSystem,
                                                         angleUnits, xData, yData, zData, gridSize, filterToggle, filterLessThan);
                 } else if (coordinateSystem == CoordinateSystem.Spherical && simType == SimulationType.GridBased 
@@ -109,7 +109,7 @@ namespace UnityVolumeRendering
                     importer = new HDF5DatasetImporter(fileToImport, dataset, dataSize, dataFormat, simType, coordinateSystem, 
                                                         sphericalType, angleUnits, rData, thetaData, phiData,
                                                         gridSize, filterToggle, filterLessThan);                    
-                } else if (coordinateSystem == CoordinateSystem.Cartesian && simType == SimulationType.ParticleBased) {
+                } else if (coordinateSystem == CoordinateSystem.Spherical && simType == SimulationType.ParticleBased) {
                     importer = new HDF5DatasetImporter(fileToImport, dataset, dataSize, dataFormat, simType, coordinateSystem,
                                                         rData, thetaData, phiData, angleUnits, gridSize,filterToggle, filterLessThan);
                 } else {
@@ -212,11 +212,14 @@ namespace UnityVolumeRendering
                         }
                     }
                     angleUnits = (AngleUnits)EditorGUILayout.EnumPopup("Angle units", angleUnits);
+                }
+                DrawUILine(Color.gray);
+
+                if (coordinateSystem == CoordinateSystem.Spherical || simType == SimulationType.ParticleBased) {
                     gridX = EditorGUILayout.IntField("X dimension of desired Cartesian grid", gridX);
                     gridY = EditorGUILayout.IntField("Y dimension of desired Cartesian grid", gridY);
                     gridZ = EditorGUILayout.IntField("Z dimension of desired Cartesian grid", gridZ); 
                 }
-                DrawUILine(Color.gray);
 
                 filterToggle = EditorGUILayout.Toggle("Filter out densities less than some value?", filterToggle);
 
