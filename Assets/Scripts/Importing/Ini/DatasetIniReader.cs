@@ -22,6 +22,17 @@ namespace UnityVolumeRendering
         public int gridY = 0;
         public int gridZ = 0;
         public float filterLessThan = 0.0f;
+        public bool filterBool = false;
+        public string rData = "";
+        public string thetaData = "";
+        public string phiData = "";
+        public string xData = "";
+        public string yData = "";
+        public string zData = "";
+        public CoordinateSystem coordinateSystem = CoordinateSystem.Cartesian;
+        public SimulationType simType = SimulationType.GridBased;
+        public SphericalType sphericalType = SphericalType.Uniform;
+        public AngleUnits angleUnits = AngleUnits.Radians;
 
     }
 
@@ -88,9 +99,31 @@ namespace UnityVolumeRendering
                     Int32.TryParse(value, out iniData.gridY);
                 else if (name == "gridz")
                     Int32.TryParse(value, out iniData.gridZ);
-                else if (name == "filterlessthan")
-                    float.TryParse(value, out iniData.filterLessThan);
-                
+                else if (name == "filterlessthan") {
+                    bool result = float.TryParse(value, out iniData.filterLessThan);
+                    iniData.filterBool = result;
+                }
+                else if (name == "rdata")
+                    iniData.rData = value;
+                else if (name == "thetadata")
+                    iniData.thetaData = value;
+                else if (name == "phidata")
+                    iniData.phiData = value;
+                else if (name == "xdata")
+                    iniData.xData = value;
+                else if (name == "ydata")
+                    iniData.yData = value;
+                else if (name == "zdata")
+                    iniData.zData = value;
+                else if (name == "coordinatesystem")
+                    iniData.coordinateSystem = GetCoordinateSystemByName(value);
+                else if (name == "simulationtype" || name == "simtype")
+                    iniData.simType = GetSimulationTypeByName(value);
+                else if (name == "sphericaltype")
+                    iniData.sphericalType = GetSphericalTypeByName(value);
+                else if (name == "angleunits" || name == "angles")
+                    iniData.angleUnits = GetAngleUnitsByName(value);
+                    
             }
 
             return iniData;
@@ -131,6 +164,59 @@ namespace UnityVolumeRendering
                     return Endianness.LittleEndian;
                 default:
                     return Endianness.LittleEndian;
+            }
+        }
+
+        private static CoordinateSystem GetCoordinateSystemByName(string format)
+        {
+            switch (format)
+            {
+                case "cartesian":
+                    return CoordinateSystem.Cartesian;
+                case "spherical":
+                    return CoordinateSystem.Spherical;
+                default:
+                    return CoordinateSystem.Cartesian;
+                
+            }
+        }
+
+        private static AngleUnits GetAngleUnitsByName(string format)
+        {
+            switch (format)
+            {
+                case "radians":
+                    return AngleUnits.Radians;
+                case "degrees":
+                    return AngleUnits.Degrees;
+                default:
+                    return AngleUnits.Radians;
+            }
+        }
+
+        private static SimulationType GetSimulationTypeByName(string format)
+        {
+            switch (format)
+            {
+                case "gridbased":
+                    return SimulationType.GridBased;
+                case "particlebased":
+                    return SimulationType.ParticleBased;
+                default:
+                    return SimulationType.GridBased;
+            }
+        }
+
+        private static SphericalType GetSphericalTypeByName(string format)
+        {
+            switch (format)
+            {
+                case "uniform":
+                    return SphericalType.Uniform;
+                case "nonuniform":
+                    return SphericalType.NonUniform;
+                default:
+                    return SphericalType.Uniform;
             }
         }
     }

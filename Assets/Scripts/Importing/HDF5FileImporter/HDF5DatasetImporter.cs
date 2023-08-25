@@ -292,11 +292,9 @@ namespace UnityVolumeRendering
                         z = new float[gridSize[0]*gridSize[1]*gridSize[2]];
 
                         for (int i = 0; i < gridSize[0]*gridSize[1]*gridSize[2]; i++) {
-                                    x[i] = r[i]*Mathf.Sin(theta[i])*Mathf.Cos(phi[i]);
-                                    y[i] = r[i]*Mathf.Sin(theta[i])*Mathf.Sin(phi[i]);
-                                    z[i] = r[i]*Mathf.Cos(theta[i]);
-                                }
-                            }
+                            x[i] = r[i]*Mathf.Sin(theta[i])*Mathf.Cos(phi[i]);
+                            y[i] = r[i]*Mathf.Sin(theta[i])*Mathf.Sin(phi[i]);
+                            z[i] = r[i]*Mathf.Cos(theta[i]);
                         }
                     }
                     densities1D = loadAndConvert1DData(dataset, gridSize[0]*gridSize[1]*gridSize[2]);

@@ -80,6 +80,17 @@ namespace UnityVolumeRendering
                 gridY = iniData.gridY;
                 gridZ = iniData.gridZ;
                 filterLessThan = iniData.filterLessThan;
+                filterToggle = iniData.filterBool;
+                rData = iniData.rData;
+                thetaData = iniData.thetaData;
+                phiData = iniData.phiData;
+                xData = iniData.xData;
+                yData = iniData.yData;
+                zData = iniData.zData;
+                coordinateSystem = iniData.coordinateSystem;
+                simType = iniData.simType;
+                sphericalType = iniData.sphericalType;
+                angleUnits = iniData.angleUnits;
             }
             // this.position.width = 400.0f;
             this.minSize = new Vector2(300.0f, 200.0f);
@@ -185,7 +196,7 @@ namespace UnityVolumeRendering
                         thetaData = EditorGUILayout.TextField("Dataset for positions in θ", thetaData);
                         phiData = EditorGUILayout.TextField("Dataset for positions in Φ", phiData);                        
                     }
-                    dimX = EditorGUILayout.IntField("Number of particles", dimX);
+                    dimX = EditorGUILayout.IntField("Dimension of current data", dimX);
                 }
                 DrawUILine(Color.gray);
                 dataFormat = (DataContentFormat)EditorGUILayout.EnumPopup("Data format", dataFormat);
