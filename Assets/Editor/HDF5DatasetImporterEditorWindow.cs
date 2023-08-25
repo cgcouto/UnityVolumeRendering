@@ -37,6 +37,12 @@ namespace UnityVolumeRendering
         private string thetaData;
         private string phiData;
 
+        private string xData;
+        private string yData;
+        private string zData;
+
+        private SphericalType sphericalType;
+
         private DataContentFormat dataFormat = DataContentFormat.Uint32;
 
         private bool importing = false;
@@ -44,6 +50,8 @@ namespace UnityVolumeRendering
         private CoordinateSystem coordinateSystem = CoordinateSystem.Cartesian;
 
         private AngleUnits angleUnits = AngleUnits.Degrees;
+
+        private SimulationType simType = SimulationType.GridBased;
 
 
         public void Initialise(string filePath)
@@ -88,16 +96,25 @@ namespace UnityVolumeRendering
                 int[] dataSize = {dimX, dimY, dimZ};
                 int[] gridSize = {gridX, gridY, gridZ};
 
-                if (coordinateSystem == CoordinateSystem.SphericalUniform) {
-                    importer = new HDF5DatasetImporter(fileToImport, dataset, dataSize, dataFormat, coordinateSystem, 
-                                                        angleUnits, rMin, rMax, thetaMin, thetaMax,
+                if (coordinateSystem == CoordinateSystem.Spherical && simType == SimulationType.ParticleBased) {
+                    importer = new HDF5DatasetImporter(fileToImport, dataset, dataSize, dataFormat, simType, coordinateSystem,
+                                                        angleUnits, xData, yData, zData, gridSize, filterToggle, filterLessThan);
+                } else if (coordinateSystem == CoordinateSystem.Spherical && simType == SimulationType.GridBased 
+                           && sphericalType == SphericalType.Uniform) {
+                    importer = new HDF5DatasetImporter(fileToImport, dataset, dataSize, dataFormat, simType, coordinateSystem, 
+                                                        sphericalType, angleUnits, rMin, rMax, thetaMin, thetaMax,
                                                         phiMin, phiMax, gridSize, filterToggle, filterLessThan);
-                } else if (coordinateSystem == CoordinateSystem.SphericalNonUniform) {
-                    importer = new HDF5DatasetImporter(fileToImport, dataset, dataSize, dataFormat, coordinateSystem, 
-                                                        angleUnits, rData, thetaData, phiData,
-                                                        gridSize, filterToggle, filterLessThan);
+                } else if (coordinateSystem == CoordinateSystem.Spherical && simType == SimulationType.GridBased
+                           && sphericalType == SphericalType.NonUniform) {
+                    importer = new HDF5DatasetImporter(fileToImport, dataset, dataSize, dataFormat, simType, coordinateSystem, 
+                                                        sphericalType, angleUnits, rData, thetaData, phiData,
+                                                        gridSize, filterToggle, filterLessThan);                    
+                } else if (coordinateSystem == CoordinateSystem.Cartesian && simType == SimulationType.ParticleBased) {
+                    importer = new HDF5DatasetImporter(fileToImport, dataset, dataSize, dataFormat, simType, coordinateSystem,
+                                                        rData, thetaData, phiData, angleUnits, gridSize,filterToggle, filterLessThan);
                 } else {
-                    importer = new HDF5DatasetImporter(fileToImport, dataset, dataSize, dataFormat, coordinateSystem);
+                    importer = new HDF5DatasetImporter(fileToImport, dataset, dataSize, dataFormat, simType, coordinateSystem,
+                                                       filterToggle,filterLessThan);
                 }
 
                 VolumeDataset volumeDataset = await importer.ImportAsync();
@@ -150,39 +167,63 @@ namespace UnityVolumeRendering
             else
             {
                 EditorGUIUtility.labelWidth = 0.5f*this.position.width;
-                dataset = EditorGUILayout.TextField("Dataset for density data", dataset);
-                dimX = EditorGUILayout.IntField("First dimension of current data (X or r)", dimX);
-                dimY = EditorGUILayout.IntField("Second dimension of current data (Y or θ)", dimY);
-                dimZ = EditorGUILayout.IntField("Third dimension of current data (Z or Φ)", dimZ);
+                DrawUILine(Color.gray);
+                simType = (SimulationType)EditorGUILayout.EnumPopup("Simulation type", simType);
+                if (simType == SimulationType.GridBased) {
+                    dataset = EditorGUILayout.TextField("Dataset for density data", dataset);
+                    dimX = EditorGUILayout.IntField("First dimension of current data (X or r)", dimX);
+                    dimY = EditorGUILayout.IntField("Second dimension of current data (Y or θ)", dimY);
+                    dimZ = EditorGUILayout.IntField("Third dimension of current data (Z or Φ)", dimZ);
+                } else if (simType == SimulationType.ParticleBased) {
+                    dataset = EditorGUILayout.TextField("Dataset for density data", dataset);
+                    if (coordinateSystem == CoordinateSystem.Cartesian) {
+                        xData = EditorGUILayout.TextField("Dataset for positions in X", xData);
+                        yData = EditorGUILayout.TextField("Dataset for positions in Y", yData);
+                        zData = EditorGUILayout.TextField("Dataset for positions in Z", zData);
+                    } else if (coordinateSystem == CoordinateSystem.Spherical) {
+                        rData = EditorGUILayout.TextField("Dataset for positions in r", rData);
+                        thetaData = EditorGUILayout.TextField("Dataset for positions in θ", thetaData);
+                        phiData = EditorGUILayout.TextField("Dataset for positions in Φ", phiData);                        
+                    }
+                    dimX = EditorGUILayout.IntField("Number of particles", dimX);
+                }
+                DrawUILine(Color.gray);
                 dataFormat = (DataContentFormat)EditorGUILayout.EnumPopup("Data format", dataFormat);
+                EditorGUILayout.SelectableLabel("**NOTE: Code currently assumes that all data passed in is of the same type!**");
+                DrawUILine(Color.gray);
                 coordinateSystem = (CoordinateSystem)EditorGUILayout.EnumPopup("Coordinate system", coordinateSystem);
 
-                if (coordinateSystem == CoordinateSystem.SphericalUniform || coordinateSystem == CoordinateSystem.SphericalNonUniform) {
-                    if (coordinateSystem == CoordinateSystem.SphericalUniform) {
-                        EditorGUILayout.SelectableLabel("This option works when your r, θ, and Φ values are evenly spaced!");
-                        rMin = EditorGUILayout.FloatField("Minimum r value", rMin);
-                        rMax = EditorGUILayout.FloatField("Maximum r value", rMax);
-                        thetaMin = EditorGUILayout.FloatField("Minimum θ value", thetaMin);
-                        thetaMax = EditorGUILayout.FloatField("Maximum θ value", thetaMax);
-                        phiMin = EditorGUILayout.FloatField("Minimum Φ value", phiMin);
-                        phiMax = EditorGUILayout.FloatField("Maximum Φ value", phiMax);
-                    } else if (coordinateSystem == CoordinateSystem.SphericalNonUniform) {
-                        EditorGUILayout.SelectableLabel("This option is best when your data has non-uniform spacing in your spherical grid!");
-                        rData = EditorGUILayout.TextField("Dataset for r values", rData);
-                        thetaData = EditorGUILayout.TextField("Dataset for θ values", thetaData);
-                        phiData = EditorGUILayout.TextField("Dataset for Φ values", phiData);
+                if (coordinateSystem == CoordinateSystem.Spherical) {
+                    if (simType == SimulationType.GridBased) {
+                        sphericalType = (SphericalType)EditorGUILayout.EnumPopup("Type of spherical grid", sphericalType);
+                        if (sphericalType == SphericalType.Uniform) {
+                            EditorGUILayout.SelectableLabel("This option works when your r, θ, and Φ values are evenly spaced!");
+                            rMin = EditorGUILayout.FloatField("Minimum r value", rMin);
+                            rMax = EditorGUILayout.FloatField("Maximum r value", rMax);
+                            thetaMin = EditorGUILayout.FloatField("Minimum θ value", thetaMin);
+                            thetaMax = EditorGUILayout.FloatField("Maximum θ value", thetaMax);
+                            phiMin = EditorGUILayout.FloatField("Minimum Φ value", phiMin);
+                            phiMax = EditorGUILayout.FloatField("Maximum Φ value", phiMax);
+                        } else if (sphericalType == SphericalType.NonUniform) {
+                            EditorGUILayout.SelectableLabel("If your data has non-uniform spacing going on, use this!");
+                            rData = EditorGUILayout.TextField("Dataset for r values", rData);
+                            thetaData = EditorGUILayout.TextField("Dataset for θ values", thetaData);
+                            phiData = EditorGUILayout.TextField("Dataset for Φ values", phiData);
+                        }
                     }
-
                     angleUnits = (AngleUnits)EditorGUILayout.EnumPopup("Angle units", angleUnits);
-                    gridX = EditorGUILayout.IntField("X dimension of Cartesian grid", gridX);
-                    gridY = EditorGUILayout.IntField("Y dimension of Cartesian grid", gridY);
-                    gridZ = EditorGUILayout.IntField("Z dimension of Cartesian grid", gridZ); 
-                    filterToggle = EditorGUILayout.Toggle("Filter out densities less than some value?", filterToggle);
-
-                    if (filterToggle) {
-                        filterLessThan = EditorGUILayout.FloatField("Filter value", filterLessThan);
-                    }  
+                    gridX = EditorGUILayout.IntField("X dimension of desired Cartesian grid", gridX);
+                    gridY = EditorGUILayout.IntField("Y dimension of desired Cartesian grid", gridY);
+                    gridZ = EditorGUILayout.IntField("Z dimension of desired Cartesian grid", gridZ); 
                 }
+                DrawUILine(Color.gray);
+
+                filterToggle = EditorGUILayout.Toggle("Filter out densities less than some value?", filterToggle);
+
+                if (filterToggle) {
+                    filterLessThan = EditorGUILayout.FloatField("Filter value", filterLessThan);
+                }  
+                DrawUILine(Color.gray);
 
                 if (GUILayout.Button("Import"))
                 {
@@ -192,6 +233,16 @@ namespace UnityVolumeRendering
                 if (GUILayout.Button("Cancel"))
                     this.Close();
             }
+        }
+        // from post #6 on https://forum.unity.com/threads/horizontal-line-in-editor-window.520812/
+        private static void DrawUILine(Color color, int thickness = 2, int padding = 10)
+        {
+            Rect r = EditorGUILayout.GetControlRect(GUILayout.Height(padding+thickness));
+            r.height = thickness;
+            r.y+=padding/2;
+            r.x-=2;
+            r.width +=6;
+            EditorGUI.DrawRect(r, color);
         }
     }
 }

@@ -21,7 +21,7 @@ namespace UnityVolumeRendering
         public int gridX = 0;
         public int gridY = 0;
         public int gridZ = 0;
-        public float filterLessThan = Single.MinValue;
+        public float filterLessThan = 0.0f;
 
     }
 

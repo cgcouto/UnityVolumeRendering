@@ -9,14 +9,25 @@ namespace UnityVolumeRendering
     [Serializable]
     public enum CoordinateSystem {
         Cartesian,
-        SphericalUniform,
-        SphericalNonUniform
+        Spherical,
+    }
+
+    [Serializable]
+    public enum SphericalType {
+        Uniform,
+        NonUniform
     }
 
     [Serializable]
     public enum AngleUnits {
         Radians,
         Degrees
+    }
+
+    [Serializable]
+    public enum SimulationType {
+        GridBased,
+        ParticleBased
     }
 
     public class HDF5DatasetImporter
@@ -26,6 +37,8 @@ namespace UnityVolumeRendering
         private int[] dataSize;
         private DataContentFormat contentFormat;
         private CoordinateSystem coordinateSystem;
+        private SimulationType simType;
+        private SphericalType sphericalType;
         private AngleUnits angleUnits;
         private float rMin;
         private float rMax;
@@ -37,31 +50,41 @@ namespace UnityVolumeRendering
         private bool filterData;
         private float filterValue;
 
-        string rData;
-        string thetaData;
-        string phiData;
+        private string rData;
+        private string thetaData;
+        private string phiData;
+
+        private string xData;
+        private string yData;
+        private string zData;
 
         public HDF5DatasetImporter() {}
 
         public HDF5DatasetImporter(string filePath, string dataset, int[] dataSize, DataContentFormat contentFormat,
-                                    CoordinateSystem coordinateSystem)
+                                    SimulationType simType, CoordinateSystem coordinateSystem, bool filterData, float filterValue)
         {
             this.filePath = filePath;
             this.dataset = dataset;
             this.dataSize = dataSize;
             this.contentFormat = contentFormat;
-            this.coordinateSystem = coordinateSystem;            
+            this.simType = simType;
+            this.coordinateSystem = coordinateSystem;      
+            this.filterData = filterData;
+            this.filterValue = filterValue;      
         }
 
         public HDF5DatasetImporter(string filePath, string dataset, int[] dataSize, DataContentFormat contentFormat,
-                                   CoordinateSystem coordinateSystem, AngleUnits angleUnits, float rMin, float rMax, float thetaMin,
-                                   float thetaMax, float phiMin, float phiMax, int[] gridSize, bool filterData, float filterValue)
+                                   SimulationType simType, CoordinateSystem coordinateSystem, SphericalType sphericalType,
+                                   AngleUnits angleUnits, float rMin, float rMax, float thetaMin, float thetaMax, 
+                                   float phiMin, float phiMax, int[] gridSize, bool filterData, float filterValue)
         {
             this.filePath = filePath;
             this.dataset = dataset;
             this.dataSize = dataSize;
             this.contentFormat = contentFormat;
+            this.simType = simType;
             this.coordinateSystem = coordinateSystem;
+            this.sphericalType = sphericalType;
             this.angleUnits = angleUnits;
             this.rMin = rMin;
             this.rMax = rMax;
@@ -72,11 +95,57 @@ namespace UnityVolumeRendering
             this.gridSize = gridSize;
             this.filterData = filterData;
             this.filterValue = filterValue;
-        }
+        }   
 
         public HDF5DatasetImporter(string filePath, string dataset, int[] dataSize, DataContentFormat contentFormat,
-                                   CoordinateSystem coordinateSystem, AngleUnits angleUnits, string rData, string thetaData,
-                                   string phiData, int[] gridSize, bool filterData, float filterValue)
+                                   SimulationType simType, CoordinateSystem coordinateSystem, SphericalType sphericalType,
+                                   AngleUnits angleUnits, string rData, string thetaData, string phiData, int[] gridSize, 
+                                   bool filterData, float filterValue)
+        {
+            this.filePath = filePath;
+            this.dataset = dataset;
+            this.dataSize = dataSize;
+            this.contentFormat = contentFormat;
+            this.simType = simType;
+            this.coordinateSystem = coordinateSystem;
+            this.angleUnits = angleUnits;
+            this.sphericalType = sphericalType;
+            this.rData = rData;
+            this.thetaData = thetaData;
+            this.phiData = phiData;
+            this.gridSize = gridSize;
+            this.filterData = filterData;
+            this.filterValue = filterValue;
+        }
+
+                // if (coordinateSystem == CoordinateSystem.Spherical && simType == SimulationType.ParticleBased) {
+                //     importer = new HDF5DatasetImporter(fileToImport, dataset, dataSize, dataFormat, simType, coordinateSystem,
+                //                                         angleUnits, xData, yData, zData, gridSize, filterToggle, filterLessThan);
+
+        public HDF5DatasetImporter(string filePath, string dataset, int[] dataSize, DataContentFormat contentFormat,
+                                   SimulationType simType, CoordinateSystem coordinateSystem, AngleUnits angleUnits, 
+                                   string xData, string yData, string zData, int[] gridSize, bool filterData, float filterValue)
+        {
+            this.filePath = filePath;
+            this.dataset = dataset;
+            this.dataSize = dataSize;
+            this.contentFormat = contentFormat;
+            this.coordinateSystem = coordinateSystem;
+            this.angleUnits = angleUnits;
+            this.xData = xData;
+            this.yData = yData;
+            this.zData = zData;
+            this.gridSize = gridSize;
+            this.filterData = filterData;
+            this.filterValue = filterValue;
+        }
+
+                // } else if (coordinateSystem == CoordinateSystem.Cartesian && simType == SimulationType.ParticleBased) {
+                //     importer = new HDF5DatasetImporter(fileToImport, dataset, dataSize, dataFormat, simType, coordinateSystem,
+                //                                         rData, thetaData, phiData, filterToggle, filterLessThan);
+        public HDF5DatasetImporter(string filePath, string dataset, int[] dataSize, DataContentFormat contentFormat,
+                                   SimulationType simType, CoordinateSystem coordinateSystem, string rData, string thetaData, 
+                                   string phiData, AngleUnits angleUnits, int[] gridSize, bool filterData, float filterValue)
         {
             this.filePath = filePath;
             this.dataset = dataset;
@@ -85,12 +154,14 @@ namespace UnityVolumeRendering
             this.coordinateSystem = coordinateSystem;
             this.angleUnits = angleUnits;
             this.rData = rData;
-            this.thetaData = thetaData;
+            this.thetaData = thetaData;  
             this.phiData = phiData;
+            this.angleUnits = angleUnits;
             this.gridSize = gridSize;
             this.filterData = filterData;
-            this.filterValue = filterValue;
+            this.filterValue = filterValue;          
         }
+
 
         public VolumeDataset Import()
         {
@@ -126,205 +197,123 @@ namespace UnityVolumeRendering
             volumeDataset.datasetName = Path.GetFileName(filePath);
             volumeDataset.filePath = filePath;
 
-            if (coordinateSystem == CoordinateSystem.SphericalUniform || coordinateSystem == CoordinateSystem.SphericalNonUniform) {
-                volumeDataset.dimX = gridSize[0];
-                volumeDataset.dimY = gridSize[1];
-                volumeDataset.dimZ = gridSize[2];
-            } else {
+            if (simType == SimulationType.GridBased && coordinateSystem == CoordinateSystem.Cartesian) {
                 volumeDataset.dimX = dataSize[0];
                 volumeDataset.dimY = dataSize[1];
                 volumeDataset.dimZ = dataSize[2];
+            } else {
+                volumeDataset.dimX = gridSize[0];
+                volumeDataset.dimY = gridSize[1];
+                volumeDataset.dimZ = gridSize[2];
             }
 
-            switch (contentFormat)
-            {
-                case DataContentFormat.Int8: 
-                    {
-                        // get the data out of the HDF5 file
-                        sbyte[,,] temp = pull3DDataFromFile<sbyte>(dataset, dataSize[0], dataSize[1], dataSize[2]);
-
-                        // convert it to floats
-                        float[,,] data = new float[dataSize[0], dataSize[1], dataSize[2]];
-
-                        for (int i = 0; i < dataSize[0]; i++) {
-                            for (int j = 0; j < dataSize[1]; j++) {
-                                for (int k = 0; k < dataSize[2]; k++) {
-                                    data[i,j,k] = (float)temp[i,j,k];
-                                }
-                            }
-                        }
-
-                        if (coordinateSystem == CoordinateSystem.SphericalUniform || coordinateSystem == CoordinateSystem.SphericalNonUniform) {
-                            data = sphericalToCartesianGrid(data);
-
-                        }
-                        volumeDataset.data = flattenData(data, volumeDataset.dimX, volumeDataset.dimY, volumeDataset.dimZ);                       
-                        break;
-                    }
-                case DataContentFormat.Int16:
-                    {
-                        short[,,] temp = pull3DDataFromFile<short>(dataset, dataSize[0], dataSize[1], dataSize[2]);
-
-                        // convert it to floats
-                        float[,,] data = new float[dataSize[0], dataSize[1], dataSize[2]];
-
-                        for (int i = 0; i < dataSize[0]; i++) {
-                            for (int j = 0; j < dataSize[1]; j++) {
-                                for (int k = 0; k < dataSize[2]; k++) {
-                                    data[i,j,k] = (float)temp[i,j,k];
-                                }
-                            }
-                        }
-
-                        if (coordinateSystem == CoordinateSystem.SphericalUniform || coordinateSystem == CoordinateSystem.SphericalNonUniform) {
-                            data = sphericalToCartesianGrid(data);
-
-                        }
-                        volumeDataset.data = flattenData(data, volumeDataset.dimX, volumeDataset.dimY, volumeDataset.dimZ);                     
-                        break;
-                    }
-                case DataContentFormat.Int32:
-                    {
-                        int[,,] temp = pull3DDataFromFile<int>(dataset, dataSize[0], dataSize[1], dataSize[2]);
-
-                        // convert it to floats
-                        float[,,] data = new float[dataSize[0], dataSize[1], dataSize[2]];
-
-                        for (int i = 0; i < dataSize[0]; i++) {
-                            for (int j = 0; j < dataSize[1]; j++) {
-                                for (int k = 0; k < dataSize[2]; k++) {
-                                    data[i,j,k] = (float)temp[i,j,k];
-                                }
-                            }
-                        }
-
-                        if (coordinateSystem == CoordinateSystem.SphericalUniform || coordinateSystem == CoordinateSystem.SphericalNonUniform) {
-                            data = sphericalToCartesianGrid(data);
-
-                        }
-                        volumeDataset.data = flattenData(data, volumeDataset.dimX, volumeDataset.dimY, volumeDataset.dimZ);               
-                        break;
-                    }
-                case DataContentFormat.Uint8:
-                    {
-                        byte[,,] temp = pull3DDataFromFile<byte>(dataset, dataSize[0], dataSize[1], dataSize[2]);
-
-                        // convert it to floats
-                        float[,,] data = new float[dataSize[0], dataSize[1], dataSize[2]];
-
-                        for (int i = 0; i < dataSize[0]; i++) {
-                            for (int j = 0; j < dataSize[1]; j++) {
-                                for (int k = 0; k < dataSize[2]; k++) {
-                                    data[i,j,k] = (float)temp[i,j,k];
-                                }
-                            }
-                        }
-
-                        if (coordinateSystem == CoordinateSystem.SphericalUniform || coordinateSystem == CoordinateSystem.SphericalNonUniform) {
-                            data = sphericalToCartesianGrid(data);
-
-                        }
-                        volumeDataset.data = flattenData(data, volumeDataset.dimX, volumeDataset.dimY, volumeDataset.dimZ);                
-                        break;
-                    }
-                case DataContentFormat.Uint16:
-                    {
-                        ushort[,,] temp = pull3DDataFromFile<ushort>(dataset, dataSize[0], dataSize[1], dataSize[2]);
-
-                        // convert it to floats
-                        float[,,] data = new float[dataSize[0], dataSize[1], dataSize[2]];
-
-                        for (int i = 0; i < dataSize[0]; i++) {
-                            for (int j = 0; j < dataSize[1]; j++) {
-                                for (int k = 0; k < dataSize[2]; k++) {
-                                    data[i,j,k] = (float)temp[i,j,k];
-                                }
-                            }
-                        }
-
-                        if (coordinateSystem == CoordinateSystem.SphericalUniform || coordinateSystem == CoordinateSystem.SphericalNonUniform) {
-                            data = sphericalToCartesianGrid(data);
-
-                        }
-                        volumeDataset.data = flattenData(data, volumeDataset.dimX, volumeDataset.dimY, volumeDataset.dimZ);            
-                        break;
-                    }
-                case DataContentFormat.Uint32:
-                    {
-                        uint[,,] temp = pull3DDataFromFile<uint>(dataset, dataSize[0], dataSize[1], dataSize[2]);
-
-                        // convert it to floats
-                        float[,,] data = new float[dataSize[0], dataSize[1], dataSize[2]];
-
-                        for (int i = 0; i < dataSize[0]; i++) {
-                            for (int j = 0; j < dataSize[1]; j++) {
-                                for (int k = 0; k < dataSize[2]; k++) {
-                                    data[i,j,k] = (float)temp[i,j,k];
-                                }
-                            }
-                        }
-
-                        if (coordinateSystem == CoordinateSystem.SphericalUniform || coordinateSystem == CoordinateSystem.SphericalNonUniform) {
-                            data = sphericalToCartesianGrid(data);
-
-                        }
-                        volumeDataset.data = flattenData(data, volumeDataset.dimX, volumeDataset.dimY, volumeDataset.dimZ);
-                        break;
-                    }
-                case DataContentFormat.Float32:
-                    {
-                        // get the data from the HDF5 file
-                        float[,,] temp = pull3DDataFromFile<float>(dataset, dataSize[0], dataSize[1], dataSize[2]);
-
-                        // convert it to floats
-                        float[,,] data = new float[dataSize[0], dataSize[1], dataSize[2]];
-
-                        for (int i = 0; i < dataSize[0]; i++) {
-                            for (int j = 0; j < dataSize[1]; j++) {
-                                for (int k = 0; k < dataSize[2]; k++) {
-                                    data[i,j,k] = (float)temp[i,j,k];
-                                }
-                            }
-                        }
-
-                        if (coordinateSystem == CoordinateSystem.SphericalUniform || coordinateSystem == CoordinateSystem.SphericalNonUniform) {
-                            data = sphericalToCartesianGrid(data);
-
-                        }
-                        volumeDataset.data = flattenData(data, volumeDataset.dimX, volumeDataset.dimY, volumeDataset.dimZ);
-                        break;
-                    }
-                case DataContentFormat.Float64:
-                    {
-                        // get the data from the HDF5 file
-                        double[,,] temp = pull3DDataFromFile<double>(dataset, dataSize[0], dataSize[1], dataSize[2]);
-
-                        // convert it to floats
-                        float[,,] data = new float[dataSize[0], dataSize[1], dataSize[2]];
-
-                        for (int i = 0; i < dataSize[0]; i++) {
-                            for (int j = 0; j < dataSize[1]; j++) {
-                                for (int k = 0; k < dataSize[2]; k++) {
-                                    data[i,j,k] = (float)temp[i,j,k];
-                                }
-                            }
-                        }
-
-                        if (coordinateSystem == CoordinateSystem.SphericalUniform || coordinateSystem == CoordinateSystem.SphericalNonUniform) {
-                            data = sphericalToCartesianGrid(data);
-
-                        }
-                        volumeDataset.data = flattenData(data, volumeDataset.dimX, volumeDataset.dimY, volumeDataset.dimZ);
-                        break;
-                    }
-                default:
-                    throw new NotImplementedException("Unimplemented data content format");
-            }
+            float[] densityData = processData();
+            volumeDataset.data = densityData;
 
             Debug.Log("Loaded dataset in range: " + volumeDataset.GetMinDataValue() + "  -  " + volumeDataset.GetMaxDataValue());
 
             volumeDataset.FixDimensions();
             volumeDataset.rotation = Quaternion.Euler(90.0f, 0.0f, 0.0f);
+        }
+
+        private float[] processData() {
+
+            float[] densities;
+
+
+            if (simType == SimulationType.GridBased && coordinateSystem == CoordinateSystem.Cartesian) {
+
+                float[,,] rawDensities = loadAndConvert3DData(dataset, dataSize[0], dataSize[1], dataSize[2]);
+                densities = flattenData(rawDensities, dataSize[0], dataSize[1], dataSize[2]);
+                if (filterData) {
+                    densities = filter1DData(densities, filterValue);
+                }
+            } else {
+
+                float[] r;
+                float[] theta;
+                float[] phi;
+                float[] x;
+                float[] y;
+                float[] z;
+                float[] densities1D;
+
+                if (simType == SimulationType.GridBased) {
+
+                    if (sphericalType == SphericalType.Uniform) {
+
+                        // generate r, theta, and phi arrays from given ranges
+                        r = generateLerpArray(rMin, rMax, dataSize[0]);
+                        theta = generateLerpArray(thetaMin, thetaMax, dataSize[1]);
+                        phi = generateLerpArray(phiMin, phiMax, dataSize[2]);
+                    } else {
+                        r = loadAndConvert1DData(rData, dataSize[0]);
+                        theta = loadAndConvert1DData(thetaData, dataSize[1]);
+                        phi = loadAndConvert1DData(phiData, dataSize[2]);
+                    }
+
+                    if (angleUnits == AngleUnits.Degrees) {
+                        theta = convertToRadians(theta);
+                        phi = convertToRadians(phi);
+                    }
+
+                    float[,,] rawDensities = loadAndConvert3DData(dataset, dataSize[0], dataSize[1], dataSize[2]);
+
+                    x = new float[dataSize[0]*dataSize[1]*dataSize[2]];
+                    y = new float[dataSize[0]*dataSize[1]*dataSize[2]];
+                    z = new float[dataSize[0]*dataSize[1]*dataSize[2]];
+                    densities1D = new float[dataSize[0]*dataSize[1]*dataSize[2]];
+
+                    for (int i = 0; i < dataSize[0]; i++) {
+                        for (int j = 0; j < dataSize[1]; j++) {
+                            for (int k = 0; k < dataSize[2]; k++) {
+                                x[i+j*dataSize[0]+k*dataSize[0]*dataSize[1]] = r[i]*Mathf.Sin(theta[j])*Mathf.Cos(phi[k]);
+                                y[i+j*dataSize[0]+k*dataSize[0]*dataSize[1]] = r[i]*Mathf.Sin(theta[j])*Mathf.Sin(phi[k]);
+                                z[i+j*dataSize[0]+k*dataSize[0]*dataSize[1]] = r[i]*Mathf.Cos(theta[j]);
+                                densities1D[i+j*dataSize[0]+k*dataSize[0]*dataSize[1]] = rawDensities[i,j,k];
+                            }
+                        }
+                    }
+                } else {
+                    if (coordinateSystem == CoordinateSystem.Cartesian) {
+
+                        x = loadAndConvert1DData(xData, gridSize[0]*gridSize[1]*gridSize[2]);
+                        y = loadAndConvert1DData(yData, gridSize[0]*gridSize[1]*gridSize[2]);
+                        z = loadAndConvert1DData(zData, gridSize[0]*gridSize[1]*gridSize[2]);
+
+                    } else {
+
+                        r = loadAndConvert1DData(rData, gridSize[0]*gridSize[1]*gridSize[2]);
+                        theta = loadAndConvert1DData(thetaData, gridSize[0]*gridSize[1]*gridSize[2]);
+                        phi = loadAndConvert1DData(phiData, gridSize[0]*gridSize[1]*gridSize[2]);
+
+                        x = new float[gridSize[0]*gridSize[1]*gridSize[2]];
+                        y = new float[gridSize[0]*gridSize[1]*gridSize[2]];
+                        z = new float[gridSize[0]*gridSize[1]*gridSize[2]];
+
+                        for (int i = 0; i < gridSize[0]; i++) {
+                            for (int j = 0; j < gridSize[1]; j++) {
+                                for (int k = 0; k < gridSize[2]; k++) {
+                                    x[i+j*gridSize[0]+k*gridSize[0]*gridSize[1]] = r[i]*Mathf.Sin(theta[j])*Mathf.Cos(phi[k]);
+                                    y[i+j*gridSize[0]+k*gridSize[0]*gridSize[1]] = r[i]*Mathf.Sin(theta[j])*Mathf.Sin(phi[k]);
+                                    z[i+j*gridSize[0]+k*gridSize[0]*gridSize[1]] = r[i]*Mathf.Cos(theta[j]);
+                                }
+                            }
+                        }
+                    }
+                    densities1D = loadAndConvert1DData(dataset, gridSize[0]*gridSize[1]*gridSize[2]);
+                }
+                densities = filterAndBinDensities(x, y, z, densities1D); 
+            }
+            return densities;
+        }
+
+        private float[] generateLerpArray(float minValue, float maxValue, int numSteps) {
+            float[] lerpArr = new float[numSteps];
+            for (int i = 0; i < numSteps; i++) {
+                    lerpArr[i] = Mathf.Lerp(minValue, maxValue, (float)i/(numSteps-1));
+                }
+            return lerpArr;
         }
 
         private T[] pull1DDataFromFile<T>(string dataName, int dim) {
@@ -351,24 +340,122 @@ namespace UnityVolumeRendering
             return temp;
         }
 
-        private int GetSampleFormatSize(DataContentFormat format)
-        {
-            switch (format)
-            {
-                case DataContentFormat.Int8:
-                    return 1;
-                case DataContentFormat.Uint8:
-                    return 1;
-                case DataContentFormat.Int16:
-                    return 2;
-                case DataContentFormat.Uint16:
-                    return 2;
-                case DataContentFormat.Int32:
-                    return 4;
-                case DataContentFormat.Uint32:
-                    return 4;
-            }
-            throw new NotImplementedException();
+        private float[] loadAndConvert1DData(string dataName, int dim) {
+            float [] data = new float[dim];
+            switch (contentFormat) 
+                {
+                    case DataContentFormat.Uint8:
+                    {
+                        byte[] temp = pull1DDataFromFile<byte>(dataset, dim);
+                        data = byteToFloat1DArray(temp, dim);
+                        break;
+                    }
+                    case DataContentFormat.Uint16:
+                    {
+                        ushort[] temp = pull1DDataFromFile<ushort>(dataset, dim);
+                        data = ushortToFloat1DArray(temp, dim);
+                        break;
+                    }
+                    case DataContentFormat.Uint32:
+                    {
+                        uint[] temp = pull1DDataFromFile<uint>(dataset, dim);
+                        data = uintToFloat1DArray(temp, dim);  
+                        break;
+                    }
+                    case DataContentFormat.Int8:
+                    {
+                        sbyte[] temp = pull1DDataFromFile<sbyte>(dataset, dim);
+                        data = sbyteToFloat1DArray(temp, dim);
+                        break;
+                    }
+                    case DataContentFormat.Int16:
+                    {
+                        short[] temp = pull1DDataFromFile<short>(dataset, dim);
+                        data = shortToFloat1DArray(temp, dim);
+                        break;
+                    }
+                    case DataContentFormat.Int32:
+                    {
+                        int[] temp = pull1DDataFromFile<int>(dataset, dim);
+                        data = intToFloat1DArray(temp, dim);
+                        break;
+                    }
+                    case DataContentFormat.Float32:
+                    {
+                        data = pull1DDataFromFile<float>(dataset, dim);
+                        break;
+                    }
+                    case DataContentFormat.Float64:
+                    {
+                        double[] temp = pull1DDataFromFile<double>(dataset, dim);
+                        data = doubleToFloat1DArray(temp, dim); 
+                        break;                       
+                    }
+                    default: 
+                    {
+                        throw new NotImplementedException("Unimplemented data content format");
+                    }
+                }
+            return data;
+        }
+
+        private float[,,] loadAndConvert3DData(string dataName, int firstDim, int secondDim, int thirdDim) {
+            float [,,] data = new float[firstDim, secondDim, thirdDim];
+            switch (contentFormat) 
+                {
+                    case DataContentFormat.Uint8:
+                    {
+                        byte[,,] temp = pull3DDataFromFile<byte>(dataset, firstDim, secondDim, thirdDim);
+                        data = byteToFloat3DArray(temp, firstDim, secondDim, thirdDim);
+                        break;
+                    }
+                    case DataContentFormat.Uint16:
+                    {
+                        ushort[,,] temp = pull3DDataFromFile<ushort>(dataset, firstDim, secondDim, thirdDim);
+                        data = ushortToFloat3DArray(temp, firstDim, secondDim, thirdDim);
+                        break;
+                    }
+                    case DataContentFormat.Uint32:
+                    {
+                        uint[,,] temp = pull3DDataFromFile<uint>(dataset, firstDim, secondDim, thirdDim);
+                        data = uintToFloat3DArray(temp, firstDim, secondDim, thirdDim);  
+                        break;
+                    }
+                    case DataContentFormat.Int8:
+                    {
+                        sbyte[,,] temp = pull3DDataFromFile<sbyte>(dataset, firstDim, secondDim, thirdDim);
+                        data = sbyteToFloat3DArray(temp, firstDim, secondDim, thirdDim);
+                        break;
+                    }
+                    case DataContentFormat.Int16:
+                    {
+                        short[,,] temp = pull3DDataFromFile<short>(dataset, firstDim, secondDim, thirdDim);
+                        data = shortToFloat3DArray(temp, firstDim, secondDim, thirdDim);
+                        break;
+                    }
+                    case DataContentFormat.Int32:
+                    {
+                        int[,,] temp = pull3DDataFromFile<int>(dataset, firstDim, secondDim, thirdDim);
+                        data = intToFloat3DArray(temp, firstDim, secondDim, thirdDim);
+                        break;
+                    }
+                    case DataContentFormat.Float32:
+                    {
+                        data = pull3DDataFromFile<float>(dataset, firstDim, secondDim, thirdDim);
+                        break;
+                    }
+                    case DataContentFormat.Float64:
+                    {
+                        double[,,] temp = pull3DDataFromFile<double>(dataset, firstDim, secondDim, thirdDim);
+                        data = doubleToFloat3DArray(temp, firstDim, secondDim, thirdDim);   
+                        break;                     
+                    }
+                    default: 
+                    {
+                        throw new NotImplementedException("Unimplemented data content format");
+                    }
+                }
+            return data;
         }
 
         private float[] flattenData(float[,,] data, int firstDim, int secondDim, int thirdDim) {
@@ -383,62 +470,27 @@ namespace UnityVolumeRendering
             return flattened;
         }
 
-        private float[,,] sphericalToCartesianGrid(float[,,] densities) {
-
-            // compute and store r, theta, and phi values, assuming they're equally dispersed across the interval
-            float[] rValues = new float[dataSize[0]];
-            float[] thetaValues = new float[dataSize[1]];
-            float[] phiValues = new float[dataSize[2]];
-
-            if (coordinateSystem == CoordinateSystem.SphericalNonUniform) {
-                rValues = pull1DDataFromFile<float>(rData, dataSize[0]);
-                thetaValues = pull1DDataFromFile<float>(thetaData, dataSize[1]);
-                phiValues = pull1DDataFromFile<float>(phiData, dataSize[2]);
-            } else {
-                for (int i = 0; i < dataSize[0]; i++) {
-                    rValues[i] = Mathf.Lerp(rMin, rMax, (float)i/(dataSize[0]-1));
-                }
-
-                bool degrees = angleUnits == AngleUnits.Degrees;
-
-                for (int i = 0; i < dataSize[1]; i++) {
-                    if (degrees) {
-                        thetaValues[i] = Mathf.Lerp(thetaMin*(Mathf.PI/180), thetaMax*(Mathf.PI/180), (float)i/(dataSize[1]-1));
-                    } else {
-                        thetaValues[i] = Mathf.Lerp(thetaMin, thetaMax, (float)i/(dataSize[1]-1));
-                    } 
-                }
-
-                for (int i = 0; i < dataSize[2]; i++) {
-                    if (degrees) {  
-                        phiValues[i] = Mathf.Lerp(phiMin*(Mathf.PI/180), phiMax*(Mathf.PI/180), (float)i/(dataSize[2]-1));
-                    } else {
-                        phiValues[i] = Mathf.Lerp(phiMin, phiMax, (float)i/(dataSize[2]-1));
-                    }
+        private float[] filter1DData(float[] data, float value) {
+            ulong count = 0;
+            for (int i = 0; i < data.GetLength(0); i++) {
+                if (data[i] >= value) {
+                    count++;
                 }
             }
+            float[] dataFiltered = new float[count];
 
-            // use the ranges to build the Cartesian point positions
-            // we also flatten the density to make it one-to-one with shape of the positions
-
-            float[] x = new float[dataSize[0]*dataSize[1]*dataSize[2]];
-            float[] y = new float[dataSize[0]*dataSize[1]*dataSize[2]];
-            float[] z = new float[dataSize[0]*dataSize[1]*dataSize[2]];
-            float[] densitiesFlattened = new float[dataSize[0]*dataSize[1]*dataSize[2]];
-
-            for (int i = 0; i < dataSize[0]; i++) {
-                for (int j = 0; j < dataSize[1]; j++) {
-                    for (int k = 0; k < dataSize[2]; k++) {
-                        x[i+j*dataSize[0]+k*dataSize[0]*dataSize[1]] = rValues[i]*Mathf.Sin(thetaValues[j])*Mathf.Cos(phiValues[k]);
-                        y[i+j*dataSize[0]+k*dataSize[0]*dataSize[1]] = rValues[i]*Mathf.Sin(thetaValues[j])*Mathf.Sin(phiValues[k]);
-                        z[i+j*dataSize[0]+k*dataSize[0]*dataSize[1]] = rValues[i]*Mathf.Cos(thetaValues[j]);
-                        densitiesFlattened[i+j*dataSize[0]+k*dataSize[0]*dataSize[1]] = densities[i,j,k];
-                    }
+            ulong index = 0;
+            for (int i = 0; i < data.GetLength(0); i++) {
+                if (data[i] >= value) {
+                    dataFiltered[index] = data[i];
+                    index++;
                 }
             }
+            return dataFiltered;
+        }
 
-            // filter the data if desired
-            // this improves the density grid resolution in the area you care about if there are sparse sections of the data 
+        private float[] filterAndBinDensities(float[] x, float[] y, float[] z, float[] densitiesFlattened) {
+
             if (filterData) {
                 ulong count = 0;
                 for (int i = 0; i < dataSize[0]*dataSize[1]*dataSize[2]; i++) {
@@ -472,10 +524,6 @@ namespace UnityVolumeRendering
 
             }
 
-            Debug.Log(x.GetLength(0));
-
-            // find the right size for the Cartesian grid cells
-
             float xMin = get1DMin(x);
             float xMax = get1DMax(x);
             float yMin = get1DMin(y);
@@ -493,20 +541,30 @@ namespace UnityVolumeRendering
             Debug.Log(yMax-yMin);
             Debug.Log(zMax-zMin);
 
-            float[,,] densitiesCartesian = new float[gridSize[0],gridSize[1],gridSize[2]];
-            int[,,] counts = new int[gridSize[0],gridSize[1],gridSize[2]];
+            float[] densitiesBinned = new float[gridSize[0]*gridSize[1]*gridSize[2]];
+            int[] counts = new int[gridSize[0]*gridSize[1]*gridSize[2]];
 
             for (int i = 0 ; i < densitiesFlattened.GetLength(0); i++) {
                 ushort xInd = (ushort)Mathf.Floor((x[i]-xMin)/cellX);
                 ushort yInd = (ushort)Mathf.Floor((y[i]-yMin)/cellY);
                 ushort zInd = (ushort)Mathf.Floor((z[i]-zMin)/cellZ);
 
-                densitiesCartesian[xInd,yInd,zInd] = (densitiesCartesian[xInd,yInd,zInd]*counts[xInd,yInd,zInd] +
-                                                    densitiesFlattened[i])/(counts[xInd,yInd,zInd]+1);
-                counts[xInd,yInd,zInd]++;
+                int dataInd = xInd+yInd*gridSize[0]+zInd*gridSize[0]*gridSize[1];
+
+                densitiesBinned[dataInd] = (densitiesBinned[dataInd]*counts[dataInd] +
+                                                    densitiesFlattened[i])/(counts[dataInd]+1);
+                counts[dataInd]++;
             }
 
-            return densitiesCartesian;
+            return densitiesBinned;
+        }
+
+        private float[] convertToRadians(float[] angles) {
+            float[] radians = new float[angles.GetLength(0)];
+            for (int i = 0; i < angles.GetLength(0); i++) {
+                radians[i] = angles[i]*(Mathf.PI/180);
+            }
+            return radians;
         }
 
         private float get1DMax(float[] data) {
@@ -557,6 +615,146 @@ namespace UnityVolumeRendering
                 }
             }
             return min;
+        }
+
+        private float[] byteToFloat1DArray(byte[] data, int dim) {
+            float[] converted = new float[dim];
+            for (int i = 0; i < dim; i++) {
+                converted[i] = (float)data[i];
+            }
+            return converted;
+        }
+
+        private float[] ushortToFloat1DArray(ushort[] data, int dim) {
+            float[] converted = new float[dim];
+            for (int i = 0; i < dim; i++) {
+                converted[i] = (float)data[i];
+            }
+            return converted;
+        }
+
+        private float[] uintToFloat1DArray(uint[] data, int dim) {
+            float[] converted = new float[dim];
+            for (int i = 0; i < dim; i++) {
+                converted[i] = (float)data[i];
+            }
+            return converted;
+        }
+
+        private float[] sbyteToFloat1DArray(sbyte[] data, int dim) {
+            float[] converted = new float[dim];
+            for (int i = 0; i < dim; i++) {
+                converted[i] = (float)data[i];
+            }
+            return converted;
+        }
+
+        private float[] shortToFloat1DArray(short[] data, int dim) {
+            float[] converted = new float[dim];
+            for (int i = 0; i < dim; i++) {
+                converted[i] = (float)data[i];
+            }
+            return converted;
+        }
+
+        private float[] intToFloat1DArray(int[] data, int dim) {
+            float[] converted = new float[dim];
+            for (int i = 0; i < dim; i++) {
+                converted[i] = (float)data[i];
+            }
+            return converted;
+        }
+
+        private float[] doubleToFloat1DArray(double[] data, int dim) {
+            float[] converted = new float[dim];
+            for (int i = 0; i < dim; i++) {
+                converted[i] = (float)data[i];
+            }
+            return converted;
+        }
+
+        private float[,,] byteToFloat3DArray(byte[,,] data, int firstDim, int secondDim, int thirdDim) {
+            float[,,] converted = new float[firstDim, secondDim, thirdDim];
+            for (int i = 0; i < firstDim; i++) {
+                for (int j = 0; j < secondDim; j++) {
+                    for (int k = 0; k < thirdDim; k++) {
+                        converted[i,j,k] = (float)data[i,j,k];  
+                    }
+                }
+            }
+            return converted;
+        }
+
+        private float[,,] ushortToFloat3DArray(ushort[,,] data, int firstDim, int secondDim, int thirdDim) {
+            float[,,] converted = new float[firstDim, secondDim, thirdDim];
+            for (int i = 0; i < firstDim; i++) {
+                for (int j = 0; j < secondDim; j++) {
+                    for (int k = 0; k < thirdDim; k++) {
+                        converted[i,j,k] = (float)data[i,j,k];  
+                    }
+                }
+            }
+            return converted;
+        }
+
+        private float[,,] uintToFloat3DArray(uint[,,] data, int firstDim, int secondDim, int thirdDim) {
+            float[,,] converted = new float[firstDim, secondDim, thirdDim];
+            for (int i = 0; i < firstDim; i++) {
+                for (int j = 0; j < secondDim; j++) {
+                    for (int k = 0; k < thirdDim; k++) {
+                        converted[i,j,k] = (float)data[i,j,k];  
+                    }
+                }
+            }
+            return converted;
+        }
+
+        private float[,,] sbyteToFloat3DArray(sbyte[,,] data, int firstDim, int secondDim, int thirdDim) {
+            float[,,] converted = new float[firstDim, secondDim, thirdDim];
+            for (int i = 0; i < firstDim; i++) {
+                for (int j = 0; j < secondDim; j++) {
+                    for (int k = 0; k < thirdDim; k++) {
+                        converted[i,j,k] = (float)data[i,j,k];  
+                    }
+                }
+            }
+            return converted;
+        }
+
+        private float[,,] shortToFloat3DArray(short[,,] data, int firstDim, int secondDim, int thirdDim) {
+            float[,,] converted = new float[firstDim, secondDim, thirdDim];
+            for (int i = 0; i < firstDim; i++) {
+                for (int j = 0; j < secondDim; j++) {
+                    for (int k = 0; k < thirdDim; k++) {
+                        converted[i,j,k] = (float)data[i,j,k];  
+                    }
+                }
+            }
+            return converted;
+        }
+
+        private float[,,] intToFloat3DArray(int[,,] data, int firstDim, int secondDim, int thirdDim) {
+            float[,,] converted = new float[firstDim, secondDim, thirdDim];
+            for (int i = 0; i < firstDim; i++) {
+                for (int j = 0; j < secondDim; j++) {
+                    for (int k = 0; k < thirdDim; k++) {
+                        converted[i,j,k] = (float)data[i,j,k];  
+                    }
+                }
+            }
+            return converted;
+        }
+
+        private float[,,] doubleToFloat3DArray(double[,,] data, int firstDim, int secondDim, int thirdDim) {
+            float[,,] converted = new float[firstDim, secondDim, thirdDim];
+            for (int i = 0; i < firstDim; i++) {
+                for (int j = 0; j < secondDim; j++) {
+                    for (int k = 0; k < thirdDim; k++) {
+                        converted[i,j,k] = (float)data[i,j,k];  
+                    }
+                }
+            }
+            return converted;
         }
     }
 }
