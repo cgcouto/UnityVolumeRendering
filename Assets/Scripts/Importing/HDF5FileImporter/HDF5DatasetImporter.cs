@@ -1,8 +1,10 @@
-using AS.HDFql;
 using UnityEngine;
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using HDF.PInvoke;
+using System.Threading;
+using System.Runtime.InteropServices;
 
 namespace UnityVolumeRendering
 {
@@ -393,48 +395,48 @@ namespace UnityVolumeRendering
                 {
                     case DataContentFormat.Uint8:
                     {
-                        byte[] temp = pull1DDataFromFile<byte>(dataName, dim);
+                        byte[] temp = pull1DDataFromFile<byte>(dataName);
                         data = byteToFloat1DArray(temp, dim);
                         break;
                     }
                     case DataContentFormat.Uint16:
                     {
-                        ushort[] temp = pull1DDataFromFile<ushort>(dataName, dim);
+                        ushort[] temp = pull1DDataFromFile<ushort>(dataName);
                         data = ushortToFloat1DArray(temp, dim);
                         break;
                     }
                     case DataContentFormat.Uint32:
                     {
-                        uint[] temp = pull1DDataFromFile<uint>(dataName, dim);
+                        uint[] temp = pull1DDataFromFile<uint>(dataName);
                         data = uintToFloat1DArray(temp, dim);  
                         break;
                     }
                     case DataContentFormat.Int8:
                     {
-                        sbyte[] temp = pull1DDataFromFile<sbyte>(dataName, dim);
+                        sbyte[] temp = pull1DDataFromFile<sbyte>(dataName);
                         data = sbyteToFloat1DArray(temp, dim);
                         break;
                     }
                     case DataContentFormat.Int16:
                     {
-                        short[] temp = pull1DDataFromFile<short>(dataName, dim);
+                        short[] temp = pull1DDataFromFile<short>(dataName);
                         data = shortToFloat1DArray(temp, dim);
                         break;
                     }
                     case DataContentFormat.Int32:
                     {
-                        int[] temp = pull1DDataFromFile<int>(dataName, dim);
+                        int[] temp = pull1DDataFromFile<int>(dataName);
                         data = intToFloat1DArray(temp, dim);
                         break;
                     }
                     case DataContentFormat.Float32:
                     {
-                        data = pull1DDataFromFile<float>(dataName, dim);
+                        data = pull1DDataFromFile<float>(dataName);
                         break;
                     }
                     case DataContentFormat.Float64:
                     {
-                        double[] temp = pull1DDataFromFile<double>(dataName, dim);
+                        double[] temp = pull1DDataFromFile<double>(dataName);
                         data = doubleToFloat1DArray(temp, dim); 
                         break;                       
                     }
@@ -453,48 +455,48 @@ namespace UnityVolumeRendering
                 {
                     case DataContentFormat.Uint8:
                     {
-                        byte[,,] temp = pull3DDataFromFile<byte>(dataName, firstDim, secondDim, thirdDim);
+                        byte[,,] temp = pull3DDataFromFile<byte>(dataName);
                         data = byteToFloat3DArray(temp, firstDim, secondDim, thirdDim);
                         break;
                     }
                     case DataContentFormat.Uint16:
                     {
-                        ushort[,,] temp = pull3DDataFromFile<ushort>(dataName, firstDim, secondDim, thirdDim);
+                        ushort[,,] temp = pull3DDataFromFile<ushort>(dataName);
                         data = ushortToFloat3DArray(temp, firstDim, secondDim, thirdDim);
                         break;
                     }
                     case DataContentFormat.Uint32:
                     {
-                        uint[,,] temp = pull3DDataFromFile<uint>(dataName, firstDim, secondDim, thirdDim);
+                        uint[,,] temp = pull3DDataFromFile<uint>(dataName);
                         data = uintToFloat3DArray(temp, firstDim, secondDim, thirdDim);  
                         break;
                     }
                     case DataContentFormat.Int8:
                     {
-                        sbyte[,,] temp = pull3DDataFromFile<sbyte>(dataName, firstDim, secondDim, thirdDim);
+                        sbyte[,,] temp = pull3DDataFromFile<sbyte>(dataName);
                         data = sbyteToFloat3DArray(temp, firstDim, secondDim, thirdDim);
                         break;
                     }
                     case DataContentFormat.Int16:
                     {
-                        short[,,] temp = pull3DDataFromFile<short>(dataName, firstDim, secondDim, thirdDim);
+                        short[,,] temp = pull3DDataFromFile<short>(dataName);
                         data = shortToFloat3DArray(temp, firstDim, secondDim, thirdDim);
                         break;
                     }
                     case DataContentFormat.Int32:
                     {
-                        int[,,] temp = pull3DDataFromFile<int>(dataName, firstDim, secondDim, thirdDim);
+                        int[,,] temp = pull3DDataFromFile<int>(dataName);
                         data = intToFloat3DArray(temp, firstDim, secondDim, thirdDim);
                         break;
                     }
                     case DataContentFormat.Float32:
                     {
-                        data = pull3DDataFromFile<float>(dataName, firstDim, secondDim, thirdDim);
+                        data = pull3DDataFromFile<float>(dataName);
                         break;
                     }
                     case DataContentFormat.Float64:
                     {
-                        double[,,] temp = pull3DDataFromFile<double>(dataName, firstDim, secondDim, thirdDim);
+                        double[,,] temp = pull3DDataFromFile<double>(dataName);
                         data = doubleToFloat3DArray(temp, firstDim, secondDim, thirdDim);   
                         break;                     
                     }
@@ -506,28 +508,70 @@ namespace UnityVolumeRendering
             return data;
         }
 
-        // Uses HDFql to pull 1D data of a desired dimension from disk and into memory
-        private T[] pull1DDataFromFile<T>(string dataName, int dim) {
-            T[] temp = new T[dim];
+        // Uses HDF.PInvoke to pull 1D data of a desired dimension from disk and into memory
+        private T[] pull1DDataFromFile<T>(string dataName) {
 
-            // Need to swap to double slashes and include quotes in the filepath so C#/HDFql can read it properly
-            HDFql.Execute("USE FILE " + "\"" + filePath.Replace("/","\\") + "\"");
+            // open the HDF5 file
+            long file = H5F.open(filePath, H5F.ACC_RDONLY, H5P.DEFAULT);
 
-            // Set a variable register (so HDFql knows where temp is in memory) then put the data there
-            HDFql.Execute("SELECT FROM " + dataName + " INTO MEMORY " + HDFql.VariableTransientRegister(temp));
+            // open the relevant dataset
+            long dset = H5D.open(file, dataName);
+
+            // get the datatype and associated number of bytes
+            long dtype = H5D.get_type(dset);
+
+            System.IntPtr size = H5T.get_size(dtype);
+
+            // get the dataspace, pull the data dimensions from there
+            long dspace = H5D.get_space(dset);
+            int ndims = H5S.get_simple_extent_ndims(dspace);
+            ulong[] dims = new ulong[ndims];
+            H5S.get_simple_extent_dims(dspace, dims, null);
+
+            T[] temp = new T[dims[0]];
+
+            GCHandle pinnedArray = GCHandle.Alloc(temp, GCHandleType.Pinned);
+            H5D.read(dset, dtype, H5S.ALL, H5S.ALL, H5P.DEFAULT, pinnedArray.AddrOfPinnedObject());
+            pinnedArray.Free();
+
+            H5T.close(dtype);
+            H5S.close(dspace);
+            H5D.close(dset);
+            H5F.close(file);
 
             return temp;
         }
 
-        // Uses HDFql to pull 3D data of desired dimensions from disk and into memory
-        private T[,,] pull3DDataFromFile<T>(string dataName, int firstDim, int secondDim, int thirdDim) {
-            T[,,] temp = new T[firstDim, secondDim, thirdDim];
+        // Uses HDF.PInvoke to pull 3D data of desired dimensions from disk and into memory
+        private T[,,] pull3DDataFromFile<T>(string dataName) {
 
-            // Need to swap to double slashes and include quotes in the filepath so C#/HDFql can read it properly
-            HDFql.Execute("USE FILE " + "\"" + filePath.Replace("/","\\") + "\"");
+            // open the HDF5 file
+            long file = H5F.open(filePath, H5F.ACC_RDONLY, H5P.DEFAULT);
 
-            // Set a variable register (so HDFql knows where temp is in memory) then put the data there
-            HDFql.Execute("SELECT FROM " + dataName + " INTO MEMORY " + HDFql.VariableTransientRegister(temp));
+            // open the relevant dataset
+            long dset = H5D.open(file, dataName);
+
+            // get the datatype and associated number of bytes
+            long dtype = H5D.get_type(dset);
+
+            System.IntPtr size = H5T.get_size(dtype);
+
+            // get the dataspace, pull the data dimensions from there
+            long dspace = H5D.get_space(dset);
+            int ndims = H5S.get_simple_extent_ndims(dspace);
+            ulong[] dims = new ulong[ndims];
+            H5S.get_simple_extent_dims(dspace, dims, null);
+
+            T[,,] temp = new T[dims[0], dims[1], dims[2]];
+
+            GCHandle pinnedArray = GCHandle.Alloc(temp, GCHandleType.Pinned);
+            H5D.read(dset, dtype, H5S.ALL, H5S.ALL, H5P.DEFAULT, pinnedArray.AddrOfPinnedObject());
+            pinnedArray.Free();
+
+            H5T.close(dtype);
+            H5S.close(dspace);
+            H5D.close(dset);
+            H5F.close(file);
 
             return temp;
         }
