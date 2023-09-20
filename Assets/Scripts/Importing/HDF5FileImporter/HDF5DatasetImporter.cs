@@ -37,9 +37,9 @@ namespace UnityVolumeRendering
         // Used in all situations
         string filePath;
         string dataset;
-        private int[] dataSize;
+        private int[] dataSize = new int[3];
         private int[] gridSize;
-        private DataContentFormat contentFormat;
+        private DataContentFormat contentFormat = DataContentFormat.Uint8;
         private CoordinateSystem coordinateSystem;
         private SimulationType simType;
         private SphericalType sphericalType;
@@ -67,28 +67,24 @@ namespace UnityVolumeRendering
 
         public HDF5DatasetImporter() {}
 
-        public HDF5DatasetImporter(string filePath, string dataset, int[] dataSize, DataContentFormat contentFormat,
+        public HDF5DatasetImporter(string filePath, string dataset, //int[] dataSize, DataContentFormat contentFormat,
                                     SimulationType simType, CoordinateSystem coordinateSystem, bool filterData, float filterValue)
         {
             this.filePath = filePath;
             this.dataset = dataset;
-            this.dataSize = dataSize;
-            this.contentFormat = contentFormat;
             this.simType = simType;
             this.coordinateSystem = coordinateSystem;      
             this.filterData = filterData;
-            this.filterValue = filterValue;      
+            this.filterValue = filterValue;   
         }
 
-        public HDF5DatasetImporter(string filePath, string dataset, int[] dataSize, DataContentFormat contentFormat,
+        public HDF5DatasetImporter(string filePath, string dataset, //int[] dataSize, DataContentFormat contentFormat,
                                    SimulationType simType, CoordinateSystem coordinateSystem, SphericalType sphericalType,
                                    AngleUnits angleUnits, float rMin, float rMax, float thetaMin, float thetaMax, 
                                    float phiMin, float phiMax, int[] gridSize, bool filterData, float filterValue)
         {
             this.filePath = filePath;
             this.dataset = dataset;
-            this.dataSize = dataSize;
-            this.contentFormat = contentFormat;
             this.simType = simType;
             this.coordinateSystem = coordinateSystem;
             this.sphericalType = sphericalType;
@@ -104,15 +100,13 @@ namespace UnityVolumeRendering
             this.filterValue = filterValue;
         }   
 
-        public HDF5DatasetImporter(string filePath, string dataset, int[] dataSize, DataContentFormat contentFormat,
+        public HDF5DatasetImporter(string filePath, string dataset, //int[] dataSize, DataContentFormat contentFormat,
                                    SimulationType simType, CoordinateSystem coordinateSystem, SphericalType sphericalType,
                                    AngleUnits angleUnits, string rData, string thetaData, string phiData, int[] gridSize, 
                                    bool filterData, float filterValue)
         {
             this.filePath = filePath;
             this.dataset = dataset;
-            this.dataSize = dataSize;
-            this.contentFormat = contentFormat;
             this.simType = simType;
             this.coordinateSystem = coordinateSystem;
             this.angleUnits = angleUnits;
@@ -126,14 +120,12 @@ namespace UnityVolumeRendering
         }
 
 
-        public HDF5DatasetImporter(string filePath, string dataset, int[] dataSize, DataContentFormat contentFormat,
+        public HDF5DatasetImporter(string filePath, string dataset, //int[] dataSize, DataContentFormat contentFormat,
                                    SimulationType simType, CoordinateSystem coordinateSystem, AngleUnits angleUnits, 
                                    string xData, string yData, string zData, int[] gridSize, bool filterData, float filterValue)
         {
             this.filePath = filePath;
             this.dataset = dataset;
-            this.dataSize = dataSize;
-            this.contentFormat = contentFormat;
             this.coordinateSystem = coordinateSystem;
             this.angleUnits = angleUnits;
             this.xData = xData;
@@ -144,14 +136,12 @@ namespace UnityVolumeRendering
             this.filterValue = filterValue;
         }
 
-        public HDF5DatasetImporter(string filePath, string dataset, int[] dataSize, DataContentFormat contentFormat,
+        public HDF5DatasetImporter(string filePath, string dataset, //int[] dataSize, DataContentFormat contentFormat,
                                    SimulationType simType, CoordinateSystem coordinateSystem, string rData, string thetaData, 
                                    string phiData, AngleUnits angleUnits, int[] gridSize, bool filterData, float filterValue)
         {
             this.filePath = filePath;
             this.dataset = dataset;
-            this.dataSize = dataSize;
-            this.contentFormat = contentFormat;
             this.coordinateSystem = coordinateSystem;
             this.angleUnits = angleUnits;
             this.rData = rData;
@@ -160,7 +150,7 @@ namespace UnityVolumeRendering
             this.angleUnits = angleUnits;
             this.gridSize = gridSize;
             this.filterData = filterData;
-            this.filterValue = filterValue;          
+            this.filterValue = filterValue;      
         }
 
         public VolumeDataset Import()
@@ -196,6 +186,10 @@ namespace UnityVolumeRendering
         {
             volumeDataset.datasetName = Path.GetFileName(filePath);
             volumeDataset.filePath = filePath;
+
+            Debug.Log(dataSize[0]);
+            getDataPropertiesFromFile(dataset);
+            Debug.Log(dataSize[0]);
 
             // We can use the raw data size only when we don't have to bin the data,
             // which is only in grid-based cartesian simulations
@@ -344,7 +338,6 @@ namespace UnityVolumeRendering
                 y = yFiltered;
                 z = zFiltered;
                 densitiesFlattened = densitiesFiltered;
-
             }
 
             float xMin = get1DMin(x);
@@ -506,6 +499,62 @@ namespace UnityVolumeRendering
                     }
                 }
             return data;
+        }
+
+        // Uses HDF.PInvoke to set the data size and data type
+        private void getDataPropertiesFromFile(string dataName) {
+            // open the HDF5 file
+            long file = H5F.open(filePath, H5F.ACC_RDONLY, H5P.DEFAULT);
+
+            // open the relevant dataset
+            long dset = H5D.open(file, dataName);
+
+            // get the dataspace, pull the data dimensions from there
+            long dspace = H5D.get_space(dset);
+            int ndims = H5S.get_simple_extent_ndims(dspace);
+            ulong[] dims = new ulong[ndims];
+            H5S.get_simple_extent_dims(dspace, dims, null);
+
+            // update the data size state
+            for (int i = 0; i < ndims; i++) {
+                dataSize[i] = (int)dims[i];
+            }
+
+            // get the datatype from the file
+            long dtype = H5D.get_type(dset);
+            long typecode = H5T.get_native_type(dtype, 0);
+
+            // update the data type state
+            contentFormat = GetFormatByTypeCode(typecode);
+
+            H5T.close(dtype);
+            H5S.close(dspace);
+            H5D.close(dset);
+            H5F.close(file);
+        }
+
+        private static DataContentFormat GetFormatByTypeCode(long typecode)
+        {
+
+            if (Convert.ToBoolean(H5T.equal(typecode, H5T.NATIVE_SHORT))) {
+                return DataContentFormat.Int16;
+            } else if (Convert.ToBoolean(H5T.equal(typecode, H5T.NATIVE_INT))) {
+                return DataContentFormat.Int32;
+            } else if (Convert.ToBoolean(H5T.equal(typecode, H5T.NATIVE_CHAR))) {
+                return DataContentFormat.Int32;
+            } else if (Convert.ToBoolean(H5T.equal(typecode, H5T.NATIVE_USHORT))) {
+                return DataContentFormat.Int32;
+            } else if (Convert.ToBoolean(H5T.equal(typecode, H5T.NATIVE_UINT))) {
+                return DataContentFormat.Int32;
+            } else if (Convert.ToBoolean(H5T.equal(typecode, H5T.NATIVE_UCHAR))) {
+                return DataContentFormat.Int32;
+            } else if (Convert.ToBoolean(H5T.equal(typecode, H5T.NATIVE_FLOAT))) {
+                return DataContentFormat.Int32;
+            } else if (Convert.ToBoolean(H5T.equal(typecode, H5T.NATIVE_DOUBLE))) {
+                return DataContentFormat.Int32;
+            } else {
+                return DataContentFormat.Uint8;
+            }
         }
 
         // Uses HDF.PInvoke to pull 1D data of a desired dimension from disk and into memory

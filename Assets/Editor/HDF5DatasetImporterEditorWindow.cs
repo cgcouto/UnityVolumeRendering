@@ -15,10 +15,6 @@ namespace UnityVolumeRendering
 
         private string dataset;
 
-        private int dimX;
-        private int dimY;
-        private int dimZ;
-
         private float rMin;
         private float rMax;
         private float thetaMin;
@@ -43,8 +39,6 @@ namespace UnityVolumeRendering
 
         private SphericalType sphericalType;
 
-        private DataContentFormat dataFormat = DataContentFormat.Uint32;
-
         private bool importing = false;
 
         private CoordinateSystem coordinateSystem = CoordinateSystem.Cartesian;
@@ -65,10 +59,6 @@ namespace UnityVolumeRendering
             DatasetIniData iniData = DatasetIniReader.ParseIniFile(fileToImport + ".ini");
             if (iniData != null)
             {
-                dimX = iniData.dimX;
-                dimY = iniData.dimY;
-                dimZ = iniData.dimZ;
-                dataFormat = iniData.format;
                 dataset = iniData.dataset;
                 rMin = iniData.rMin;
                 rMax = iniData.rMax;
@@ -92,7 +82,6 @@ namespace UnityVolumeRendering
                 sphericalType = iniData.sphericalType;
                 angleUnits = iniData.angleUnits;
             }
-            // this.position.width = 400.0f;
             this.minSize = new Vector2(300.0f, 200.0f);
         }
 
@@ -104,27 +93,26 @@ namespace UnityVolumeRendering
 
                 HDF5DatasetImporter importer = new HDF5DatasetImporter();
 
-                int[] dataSize = {dimX, dimY, dimZ};
                 int[] gridSize = {gridX, gridY, gridZ};
 
                 if (coordinateSystem == CoordinateSystem.Cartesian && simType == SimulationType.ParticleBased) {
-                    importer = new HDF5DatasetImporter(fileToImport, dataset, dataSize, dataFormat, simType, coordinateSystem,
+                    importer = new HDF5DatasetImporter(fileToImport, dataset, simType, coordinateSystem,
                                                         angleUnits, xData, yData, zData, gridSize, filterToggle, filterLessThan);
                 } else if (coordinateSystem == CoordinateSystem.Spherical && simType == SimulationType.GridBased 
                            && sphericalType == SphericalType.Uniform) {
-                    importer = new HDF5DatasetImporter(fileToImport, dataset, dataSize, dataFormat, simType, coordinateSystem, 
+                    importer = new HDF5DatasetImporter(fileToImport, dataset, simType, coordinateSystem, 
                                                         sphericalType, angleUnits, rMin, rMax, thetaMin, thetaMax,
                                                         phiMin, phiMax, gridSize, filterToggle, filterLessThan);
                 } else if (coordinateSystem == CoordinateSystem.Spherical && simType == SimulationType.GridBased
                            && sphericalType == SphericalType.NonUniform) {
-                    importer = new HDF5DatasetImporter(fileToImport, dataset, dataSize, dataFormat, simType, coordinateSystem, 
+                    importer = new HDF5DatasetImporter(fileToImport, dataset, simType, coordinateSystem, 
                                                         sphericalType, angleUnits, rData, thetaData, phiData,
                                                         gridSize, filterToggle, filterLessThan);                    
                 } else if (coordinateSystem == CoordinateSystem.Spherical && simType == SimulationType.ParticleBased) {
-                    importer = new HDF5DatasetImporter(fileToImport, dataset, dataSize, dataFormat, simType, coordinateSystem,
+                    importer = new HDF5DatasetImporter(fileToImport, dataset, simType, coordinateSystem,
                                                         rData, thetaData, phiData, angleUnits, gridSize,filterToggle, filterLessThan);
                 } else {
-                    importer = new HDF5DatasetImporter(fileToImport, dataset, dataSize, dataFormat, simType, coordinateSystem,
+                    importer = new HDF5DatasetImporter(fileToImport, dataset, simType, coordinateSystem,
                                                        filterToggle,filterLessThan);
                 }
 
@@ -135,7 +123,7 @@ namespace UnityVolumeRendering
                     if (EditorPrefs.GetBool("DownscaleDatasetPrompt"))
                     {
                         if (EditorUtility.DisplayDialog("Optional DownScaling",
-                            $"Do you want to downscale the dataset? The dataset's dimension is: {volumeDataset.dimX} x {volumeDataset.dimY} x {volumeDataset.dimZ}", "Yes", "No"))
+                            $"Do you want to downscale the dataset?", "Yes", "No"))
                         {
                             Debug.Log("Async dataset downscale. Hold on.");
                             progressHandler.ReportProgress(0.7f, "Downscaling dataset");
@@ -182,9 +170,6 @@ namespace UnityVolumeRendering
                 simType = (SimulationType)EditorGUILayout.EnumPopup("Simulation type", simType);
                 if (simType == SimulationType.GridBased) {
                     dataset = EditorGUILayout.TextField("Dataset for density data", dataset);
-                    dimX = EditorGUILayout.IntField("First dimension of current data (X or r)", dimX);
-                    dimY = EditorGUILayout.IntField("Second dimension of current data (Y or θ)", dimY);
-                    dimZ = EditorGUILayout.IntField("Third dimension of current data (Z or Φ)", dimZ);
                 } else if (simType == SimulationType.ParticleBased) {
                     dataset = EditorGUILayout.TextField("Dataset for density data", dataset);
                     if (coordinateSystem == CoordinateSystem.Cartesian) {
@@ -196,11 +181,7 @@ namespace UnityVolumeRendering
                         thetaData = EditorGUILayout.TextField("Dataset for positions in θ", thetaData);
                         phiData = EditorGUILayout.TextField("Dataset for positions in Φ", phiData);                        
                     }
-                    dimX = EditorGUILayout.IntField("Dimension of current data", dimX);
                 }
-                DrawUILine(Color.gray);
-                dataFormat = (DataContentFormat)EditorGUILayout.EnumPopup("Data format", dataFormat);
-                EditorGUILayout.SelectableLabel("**NOTE: Code currently assumes that all data passed in is of the same type!**");
                 DrawUILine(Color.gray);
                 coordinateSystem = (CoordinateSystem)EditorGUILayout.EnumPopup("Coordinate system", coordinateSystem);
 
