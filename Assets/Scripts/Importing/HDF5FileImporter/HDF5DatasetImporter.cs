@@ -541,17 +541,17 @@ namespace UnityVolumeRendering
             } else if (Convert.ToBoolean(H5T.equal(typecode, H5T.NATIVE_INT))) {
                 return DataContentFormat.Int32;
             } else if (Convert.ToBoolean(H5T.equal(typecode, H5T.NATIVE_CHAR))) {
-                return DataContentFormat.Int32;
+                return DataContentFormat.Int8;
             } else if (Convert.ToBoolean(H5T.equal(typecode, H5T.NATIVE_USHORT))) {
-                return DataContentFormat.Int32;
+                return DataContentFormat.Uint16;
             } else if (Convert.ToBoolean(H5T.equal(typecode, H5T.NATIVE_UINT))) {
-                return DataContentFormat.Int32;
+                return DataContentFormat.Uint32;
             } else if (Convert.ToBoolean(H5T.equal(typecode, H5T.NATIVE_UCHAR))) {
-                return DataContentFormat.Int32;
+                return DataContentFormat.Uint8;
             } else if (Convert.ToBoolean(H5T.equal(typecode, H5T.NATIVE_FLOAT))) {
-                return DataContentFormat.Int32;
+                return DataContentFormat.Float32;
             } else if (Convert.ToBoolean(H5T.equal(typecode, H5T.NATIVE_DOUBLE))) {
-                return DataContentFormat.Int32;
+                return DataContentFormat.Float64;
             } else {
                 return DataContentFormat.Uint8;
             }
